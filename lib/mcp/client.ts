@@ -12,7 +12,10 @@ async function callTool(tool: string, args: any): Promise<any> {
 
   const response = await fetch(`${baseUrl}/mcp`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json, text/event-stream",
+    },
     cache: "no-store",
     // May need adjustment to match MCP server transport contract.
     body: JSON.stringify({ tool, args }),
