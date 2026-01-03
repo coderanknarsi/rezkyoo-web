@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
 
-const POLL_INTERVAL_MS = 2500
+const POLL_INTERVAL_MS = 10000 // 10 seconds - only poll during active calls
 
 type CallStatus = "pending" | "calling" | "completed" | "failed" | "no_answer"
 
@@ -208,10 +208,18 @@ export default function BatchStatusPage() {
   }, [batchId, selectedIds.size])
 
   React.useEffect(() => {
+    // Initial fetch always runs
     fetchStatus()
-    const interval = setInterval(fetchStatus, POLL_INTERVAL_MS)
-    return () => clearInterval(interval)
-  }, [fetchStatus])
+
+    // Only set up polling interval if calls are in progress or we're still loading
+    // Don't poll when: status is "found" (waiting for selection) or "completed" (done)
+    const shouldPoll = !status || status === "calling" || status === "searching"
+
+    if (shouldPoll) {
+      const interval = setInterval(fetchStatus, POLL_INTERVAL_MS)
+      return () => clearInterval(interval)
+    }
+  }, [fetchStatus, status])
 
   const updateSelection = (id: string, checked: boolean) => {
     setSelectedIds((prev) => {
