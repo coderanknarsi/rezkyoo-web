@@ -158,9 +158,9 @@ export default function SearchPage() {
         }
       },
       {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000, // Cache for 1 minute
+        enableHighAccuracy: false, // Use low accuracy first for faster response
+        timeout: 30000, // 30 seconds timeout
+        maximumAge: 300000, // Cache for 5 minutes
       }
     )
   }
