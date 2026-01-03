@@ -4,10 +4,25 @@ import type {
   StartCallsInput,
 } from "@/lib/mcp/types"
 
-async function callTool(tool: string, args: any): Promise<any> {
+let requestId = 0
+
+async function callTool(toolName: string, args: any): Promise<any> {
   const baseUrl = process.env.REZKYOO_MCP_BASE_URL
   if (!baseUrl) {
     throw new Error("REZKYOO_MCP_BASE_URL is not configured")
+  }
+
+  requestId += 1
+
+  // JSON-RPC 2.0 format for MCP tools/call
+  const jsonRpcRequest = {
+    jsonrpc: "2.0",
+    id: requestId,
+    method: "tools/call",
+    params: {
+      name: toolName,
+      arguments: args,
+    },
   }
 
   const response = await fetch(`${baseUrl}/mcp`, {
@@ -17,8 +32,7 @@ async function callTool(tool: string, args: any): Promise<any> {
       Accept: "application/json, text/event-stream",
     },
     cache: "no-store",
-    // May need adjustment to match MCP server transport contract.
-    body: JSON.stringify({ tool, args }),
+    body: JSON.stringify(jsonRpcRequest),
   })
 
   if (!response.ok) {
@@ -32,7 +46,15 @@ async function callTool(tool: string, args: any): Promise<any> {
     throw new Error(`MCP request failed: ${response.status} ${details}`)
   }
 
-  return response.json()
+  const jsonRpcResponse = await response.json()
+
+  // Handle JSON-RPC error response
+  if (jsonRpcResponse.error) {
+    throw new Error(jsonRpcResponse.error.message || "MCP tool call failed")
+  }
+
+  // Return the result from the JSON-RPC response
+  return jsonRpcResponse.result
 }
 
 export async function findRestaurants(args: FindRestaurantsInput) {
