@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Phone, PhoneCall, PhoneOff, Check, X, Clock, AlertCircle, RefreshCw } from "lucide-react"
+import { Phone, PhoneCall, PhoneOff, Check, Star, AlertCircle, RefreshCw, MapPin, Users } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -38,6 +38,7 @@ type BatchItem = {
   types?: string[]
   address?: string
   rating?: number
+  user_ratings_total?: number
   status?: CallStatus
   result?: CallResult
 }
@@ -58,24 +59,49 @@ function getStatusIcon(status?: CallStatus) {
 
 function getStatusBadge(status?: CallStatus, result?: CallResult) {
   if (status === "calling") {
-    return <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Calling...</Badge>
+    return <Badge className="bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400">Calling...</Badge>
   }
   if (status === "completed" && result?.outcome === "hold_confirmed") {
-    return <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">Hold Confirmed ✓</Badge>
+    return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400">Hold Confirmed ✓</Badge>
   }
   if (status === "completed" && result?.outcome === "available") {
-    return <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Available</Badge>
+    return <Badge className="bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400">Available</Badge>
   }
   if (status === "completed" && result?.outcome === "not_available") {
-    return <Badge variant="secondary">Not Available</Badge>
+    return <Badge className="bg-zinc-100 text-zinc-600 border-zinc-300">Not Available</Badge>
   }
   if (status === "completed" && result?.outcome === "voicemail") {
-    return <Badge variant="secondary">Voicemail</Badge>
+    return <Badge className="bg-zinc-100 text-zinc-600 border-zinc-300">Voicemail</Badge>
   }
   if (status === "failed" || status === "no_answer") {
-    return <Badge variant="destructive">No Answer</Badge>
+    return <Badge className="bg-red-100 text-red-700 border-red-300">No Answer</Badge>
   }
-  return <Badge variant="outline">Pending</Badge>
+  return null // No badge for pending in selection mode
+}
+
+function RatingStars({ rating, count }: { rating?: number; count?: number }) {
+  if (!rating) return null
+
+  // Determine color based on rating
+  let colorClass = "text-yellow-500"
+  if (rating >= 4.5) colorClass = "text-emerald-500"
+  else if (rating >= 4.0) colorClass = "text-yellow-500"
+  else if (rating >= 3.5) colorClass = "text-orange-500"
+  else colorClass = "text-red-500"
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className={`flex items-center gap-0.5 ${colorClass}`}>
+        <Star className="h-4 w-4 fill-current" />
+        <span className="font-semibold">{rating.toFixed(1)}</span>
+      </div>
+      {count && (
+        <span className="text-xs text-muted-foreground">
+          ({count.toLocaleString()} reviews)
+        </span>
+      )}
+    </div>
+  )
 }
 
 function getOutcomeMessage(result?: CallResult) {
@@ -83,46 +109,46 @@ function getOutcomeMessage(result?: CallResult) {
 
   if (result.outcome === "hold_confirmed") {
     return (
-      <div className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300">
-        <div className="font-medium">🎉 Table on hold!</div>
-        {result.time_held && <div>Held until: {result.time_held}</div>}
-        {result.perks && <div className="mt-1">Perks: {result.perks}</div>}
-        {result.ai_summary && <div className="mt-1 text-emerald-600 dark:text-emerald-400">{result.ai_summary}</div>}
+      <div className="rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 p-4 text-sm dark:from-emerald-900/20 dark:to-teal-900/20 dark:border-emerald-800">
+        <div className="font-semibold text-emerald-700 dark:text-emerald-400">🎉 Table on hold!</div>
+        {result.time_held && <div className="text-emerald-600 dark:text-emerald-300">Held until: {result.time_held}</div>}
+        {result.perks && <div className="mt-1 text-emerald-600 dark:text-emerald-300">Perks: {result.perks}</div>}
+        {result.ai_summary && <div className="mt-2 text-emerald-600/80 dark:text-emerald-400/80">{result.ai_summary}</div>}
       </div>
     )
   }
 
   if (result.outcome === "available") {
     return (
-      <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-800 dark:bg-blue-900/20 dark:text-blue-300">
-        <div className="font-medium">Table available!</div>
-        {result.ai_summary && <div className="mt-1">{result.ai_summary}</div>}
+      <div className="rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-4 text-sm dark:from-blue-900/20 dark:to-indigo-900/20 dark:border-blue-800">
+        <div className="font-semibold text-blue-700 dark:text-blue-400">✨ Table available!</div>
+        {result.ai_summary && <div className="mt-1 text-blue-600 dark:text-blue-300">{result.ai_summary}</div>}
       </div>
     )
   }
 
   if (result.outcome === "not_available" && result.alternative_time) {
     return (
-      <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
-        <div className="font-medium">Alternative offered</div>
-        <div>Available at: {result.alternative_time}</div>
-        {result.ai_summary && <div className="mt-1">{result.ai_summary}</div>}
+      <div className="rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 p-4 text-sm dark:from-amber-900/20 dark:to-orange-900/20 dark:border-amber-800">
+        <div className="font-semibold text-amber-700 dark:text-amber-400">Alternative time offered</div>
+        <div className="text-amber-600 dark:text-amber-300">Available at: {result.alternative_time}</div>
+        {result.ai_summary && <div className="mt-1 text-amber-600/80 dark:text-amber-400/80">{result.ai_summary}</div>}
       </div>
     )
   }
 
   if (result.outcome === "not_available") {
     return (
-      <div className="rounded-lg bg-zinc-100 p-3 text-sm text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-        <div>Not available at requested time</div>
-        {result.ai_summary && <div className="mt-1">{result.ai_summary}</div>}
+      <div className="rounded-lg bg-zinc-100 border border-zinc-200 p-4 text-sm dark:bg-zinc-800 dark:border-zinc-700">
+        <div className="text-zinc-600 dark:text-zinc-400">Not available at requested time</div>
+        {result.ai_summary && <div className="mt-1 text-zinc-500 dark:text-zinc-500">{result.ai_summary}</div>}
       </div>
     )
   }
 
   if (result.ai_summary) {
     return (
-      <div className="rounded-lg bg-zinc-100 p-3 text-sm text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+      <div className="rounded-lg bg-zinc-100 border border-zinc-200 p-4 text-sm dark:bg-zinc-800 dark:border-zinc-700">
         {result.ai_summary}
       </div>
     )
@@ -167,6 +193,11 @@ export default function BatchStatusPage() {
       }
       if (Array.isArray(data?.items)) {
         setItems(data.items)
+        // Auto-select all items on first load if status is "found"
+        if (data.status === "found" && selectedIds.size === 0) {
+          const allIds = new Set<string>(data.items.map((item: BatchItem) => item.place_id ?? item.id ?? "").filter(Boolean))
+          setSelectedIds(allIds)
+        }
       }
       if (data?.paywall_required) {
         setPaywallRequired(true)
@@ -174,7 +205,7 @@ export default function BatchStatusPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Request failed")
     }
-  }, [batchId])
+  }, [batchId, selectedIds.size])
 
   React.useEffect(() => {
     fetchStatus()
@@ -192,6 +223,15 @@ export default function BatchStatusPage() {
       }
       return next
     })
+  }
+
+  const selectAll = () => {
+    const allIds = new Set(items.map(item => item.place_id ?? item.id ?? "").filter(Boolean))
+    setSelectedIds(allIds)
+  }
+
+  const selectNone = () => {
+    setSelectedIds(new Set())
   }
 
   const handleStartCalls = async () => {
@@ -229,194 +269,246 @@ export default function BatchStatusPage() {
 
   const isCallsInProgress = status === "calling" || callingItems > 0
   const allCallsComplete = totalItems > 0 && completedItems === totalItems
+  const isSelectionMode = status === "found"
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-12">
-      {/* Header with progress */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Restaurant Search</CardTitle>
-            {isCallsInProgress && (
-              <div className="flex items-center gap-2 text-amber-600">
-                <RefreshCw className="h-4 w-4 animate-spin" />
-                <span className="text-sm">Calling restaurants...</span>
+    <div className="min-h-screen bg-gradient-to-b from-emerald-50/50 via-white to-white dark:from-zinc-900 dark:via-zinc-950 dark:to-zinc-950">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-12">
+        {/* Header with progress */}
+        <Card className="border-0 shadow-lg bg-white/80 backdrop-blur dark:bg-zinc-900/80">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-2xl bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                  {isSelectionMode ? "Select Restaurants to Call" :
+                    isCallsInProgress ? "Calling Restaurants..." :
+                      allCallsComplete ? "Results" : "Finding Restaurants..."}
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {isSelectionMode && `${items.length} restaurants found • ${selectedIds.size} selected`}
+                  {isCallsInProgress && `Checking availability...`}
+                  {allCallsComplete && `${available} available out of ${totalItems} called`}
+                </p>
+              </div>
+              {isCallsInProgress && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <span className="text-sm font-medium">Live</span>
+                </div>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {/* Progress bar */}
+            {totalItems > 0 && (status === "calling" || status === "completed") && (
+              <div className="mb-4">
+                <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                  <span>{completedItems} of {totalItems} calls completed</span>
+                  {holdsConfirmed > 0 && (
+                    <span className="text-emerald-600 font-semibold">{holdsConfirmed} hold{holdsConfirmed > 1 ? "s" : ""} confirmed! 🎉</span>
+                  )}
+                </div>
+                <div className="h-3 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 transition-all duration-500 animate-pulse"
+                    style={{ width: `${(completedItems / totalItems) * 100}%` }}
+                  />
+                </div>
               </div>
             )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {/* Progress bar */}
-          {totalItems > 0 && (status === "calling" || status === "completed") && (
-            <div className="mb-4">
-              <div className="flex justify-between text-sm text-muted-foreground mb-2">
-                <span>{completedItems} of {totalItems} calls completed</span>
-                {holdsConfirmed > 0 && (
-                  <span className="text-emerald-600 font-medium">{holdsConfirmed} hold{holdsConfirmed > 1 ? "s" : ""} confirmed!</span>
-                )}
-              </div>
-              <div className="h-2 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-500"
-                  style={{ width: `${(completedItems / totalItems) * 100}%` }}
-                />
-              </div>
-            </div>
-          )}
 
-          {/* Stats */}
-          {allCallsComplete && (
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div className="rounded-lg bg-zinc-100 dark:bg-zinc-800 p-3">
-                <div className="text-2xl font-bold">{totalItems}</div>
-                <div className="text-xs text-muted-foreground">Called</div>
+            {/* Stats */}
+            {allCallsComplete && (
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div className="rounded-xl bg-gradient-to-br from-zinc-100 to-zinc-50 dark:from-zinc-800 dark:to-zinc-900 p-4 shadow-sm">
+                  <div className="text-3xl font-bold">{totalItems}</div>
+                  <div className="text-xs text-muted-foreground font-medium">Called</div>
+                </div>
+                <div className="rounded-xl bg-gradient-to-br from-emerald-100 to-teal-50 dark:from-emerald-900/30 dark:to-teal-900/30 p-4 shadow-sm">
+                  <div className="text-3xl font-bold text-emerald-600">{available}</div>
+                  <div className="text-xs text-emerald-600 font-medium">Available</div>
+                </div>
+                <div className="rounded-xl bg-gradient-to-br from-blue-100 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 p-4 shadow-sm">
+                  <div className="text-3xl font-bold text-blue-600">{holdsConfirmed}</div>
+                  <div className="text-xs text-blue-600 font-medium">On Hold</div>
+                </div>
               </div>
-              <div className="rounded-lg bg-emerald-100 dark:bg-emerald-900/30 p-3">
-                <div className="text-2xl font-bold text-emerald-600">{available}</div>
-                <div className="text-xs text-emerald-600">Available</div>
-              </div>
-              <div className="rounded-lg bg-blue-100 dark:bg-blue-900/30 p-3">
-                <div className="text-2xl font-bold text-blue-600">{holdsConfirmed}</div>
-                <div className="text-xs text-blue-600">Holds</div>
-              </div>
-            </div>
-          )}
-
-          {status === "found" && (
-            <div className="text-sm text-muted-foreground">
-              Select restaurants below and click "Start Calls" to check availability.
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {error && (
-        <Card className="border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950">
-          <CardContent className="flex items-center gap-3 py-4">
-            <AlertCircle className="h-5 w-5 text-red-500" />
-            <span className="text-sm text-red-700 dark:text-red-400">{error}</span>
+            )}
           </CardContent>
         </Card>
-      )}
 
-      {/* Action bar */}
-      {status === "found" && (
-        <>
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Select restaurants to call</h2>
+        {error && (
+          <Card className="border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950">
+            <CardContent className="flex items-center gap-3 py-4">
+              <AlertCircle className="h-5 w-5 text-red-500" />
+              <span className="text-sm text-red-700 dark:text-red-400">{error}</span>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Action bar for selection mode */}
+        {isSelectionMode && (
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={selectAll}>
+                Select All
+              </Button>
+              <Button variant="outline" size="sm" onClick={selectNone}>
+                Clear
+              </Button>
+            </div>
             <Button
               onClick={handleStartCalls}
               disabled={isStartingCalls || selectedIds.size === 0}
-              className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
+              size="lg"
+              className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-lg shadow-emerald-500/25"
             >
               <Phone className="h-4 w-4" />
-              {isStartingCalls ? "Starting..." : `Call ${selectedIds.size} restaurant${selectedIds.size !== 1 ? "s" : ""}`}
+              {isStartingCalls ? "Starting Calls..." : `Call ${selectedIds.size} Restaurant${selectedIds.size !== 1 ? "s" : ""}`}
             </Button>
           </div>
-          <Separator />
-        </>
-      )}
-
-      {/* Restaurant list */}
-      <div className="grid gap-4">
-        {items.length === 0 ? (
-          <Card>
-            <CardContent className="flex items-center justify-center gap-3 py-12 text-muted-foreground">
-              <RefreshCw className="h-5 w-5 animate-spin" />
-              <span>Finding restaurants...</span>
-            </CardContent>
-          </Card>
-        ) : (
-          items.map((item) => {
-            const displayId = item.place_id ?? item.id ?? "unknown"
-            const isSelected = selectedIds.has(displayId)
-            const showCheckbox = status === "found"
-            const callStatus = item.status as CallStatus | undefined
-
-            return (
-              <Card
-                key={displayId}
-                className={`transition-all ${item.result?.outcome === "hold_confirmed"
-                  ? "border-emerald-300 bg-emerald-50/50 dark:border-emerald-800 dark:bg-emerald-950/30"
-                  : ""
-                  }`}
-              >
-                <CardHeader className="flex flex-row items-start gap-4 pb-2">
-                  {showCheckbox && (
-                    <Checkbox
-                      checked={isSelected}
-                      onChange={(e) => updateSelection(displayId, e.target.checked)}
-                      aria-label={`Select ${item.name ?? "restaurant"}`}
-                      className="mt-1"
-                    />
-                  )}
-                  {!showCheckbox && (
-                    <div className="mt-1">
-                      {getStatusIcon(callStatus)}
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <CardTitle className="text-lg truncate">{item.name ?? "Unknown restaurant"}</CardTitle>
-                      {getStatusBadge(callStatus, item.result)}
-                    </div>
-                    <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-                      <span>{item.phone ?? "No phone"}</span>
-                      {item.rating && (
-                        <span>⭐ {item.rating}</span>
-                      )}
-                    </div>
-                    {item.address && (
-                      <div className="text-sm text-muted-foreground truncate mt-1">
-                        {item.address}
-                      </div>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  {/* Types/categories */}
-                  {item.types && item.types.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-3">
-                      {item.types.slice(0, 3).map((type) => (
-                        <Badge key={type} variant="secondary" className="text-xs">
-                          {type.replace(/_/g, " ")}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Call result */}
-                  {getOutcomeMessage(item.result)}
-                </CardContent>
-              </Card>
-            )
-          })
         )}
-      </div>
 
-      {/* Paywall dialog */}
-      <Dialog open={paywallRequired} onOpenChange={setPaywallRequired}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Unlock availability</DialogTitle>
-            <DialogDescription>
-              Availability was found. Pay to reveal which restaurants are
-              bookable and to confirm a booking call.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPaywallRequired(false)}>
-              Not now
-            </Button>
-            <Button
-              onClick={() => router.push("/app/unlock")}
-              className="bg-gradient-to-r from-emerald-500 to-teal-500"
-            >
-              Unlock Results
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        {/* Restaurant list */}
+        <div className="grid gap-4">
+          {items.length === 0 ? (
+            <Card className="border-0 shadow-md">
+              <CardContent className="flex flex-col items-center justify-center gap-4 py-16">
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-full bg-emerald-500/20 animate-ping" />
+                  <div className="relative rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 p-4">
+                    <RefreshCw className="h-6 w-6 text-white animate-spin" />
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="font-semibold text-lg">Finding restaurants...</div>
+                  <div className="text-sm text-muted-foreground">This usually takes a few seconds</div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            items.map((item, index) => {
+              const displayId = item.place_id ?? item.id ?? "unknown"
+              const isSelected = selectedIds.has(displayId)
+              const callStatus = item.status as CallStatus | undefined
+
+              return (
+                <Card
+                  key={displayId}
+                  className={`border-0 shadow-md transition-all hover:shadow-lg ${isSelected && isSelectionMode
+                    ? "ring-2 ring-emerald-500 ring-offset-2 bg-emerald-50/50 dark:bg-emerald-950/30"
+                    : item.result?.outcome === "hold_confirmed"
+                      ? "bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30"
+                      : "bg-white dark:bg-zinc-900"
+                    }`}
+                  onClick={() => isSelectionMode && updateSelection(displayId, !isSelected)}
+                  style={{ cursor: isSelectionMode ? "pointer" : "default" }}
+                >
+                  <CardContent className="p-5">
+                    <div className="flex items-start gap-4">
+                      {/* Selection checkbox or status icon */}
+                      {isSelectionMode ? (
+                        <div className="pt-1">
+                          <Checkbox
+                            checked={isSelected}
+                            onChange={(e) => {
+                              e.stopPropagation()
+                              updateSelection(displayId, e.target.checked)
+                            }}
+                            aria-label={`Select ${item.name ?? "restaurant"}`}
+                            className="h-5 w-5"
+                          />
+                        </div>
+                      ) : (
+                        <div className="pt-1">
+                          {getStatusIcon(callStatus)}
+                        </div>
+                      )}
+
+                      <div className="flex-1 min-w-0">
+                        {/* Header row */}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-lg truncate">
+                              {item.name ?? "Unknown restaurant"}
+                            </h3>
+                            <div className="flex items-center gap-4 mt-1 flex-wrap">
+                              {/* Rating */}
+                              <RatingStars rating={item.rating} count={item.user_ratings_total} />
+
+                              {/* Phone */}
+                              <span className="text-sm text-muted-foreground">
+                                {item.phone ?? "No phone"}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Status badge */}
+                          {!isSelectionMode && getStatusBadge(callStatus, item.result)}
+                        </div>
+
+                        {/* Address */}
+                        {item.address && (
+                          <div className="flex items-center gap-1.5 mt-2 text-sm text-muted-foreground">
+                            <MapPin className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">{item.address}</span>
+                          </div>
+                        )}
+
+                        {/* Types/categories */}
+                        {item.types && item.types.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mt-3">
+                            {item.types.slice(0, 4).map((type) => (
+                              <Badge
+                                key={type}
+                                variant="secondary"
+                                className="text-xs bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800"
+                              >
+                                {type.replace(/_/g, " ")}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Call result */}
+                        {item.result && (
+                          <div className="mt-4">
+                            {getOutcomeMessage(item.result)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })
+          )}
+        </div>
+
+        {/* Paywall dialog */}
+        <Dialog open={paywallRequired} onOpenChange={setPaywallRequired}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-xl">Unlock Your Reservations</DialogTitle>
+              <DialogDescription>
+                Great news! We found availability at some restaurants.
+                Unlock to see which ones and let us secure your table.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setPaywallRequired(false)}>
+                Maybe Later
+              </Button>
+              <Button
+                onClick={() => router.push("/app/unlock")}
+                className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
+              >
+                Unlock Results
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   )
 }
