@@ -29,6 +29,7 @@ async function callTool(toolName: string, args: any): Promise<any> {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      // MCP server requires both formats in Accept header
       Accept: "application/json, text/event-stream",
     },
     cache: "no-store",
@@ -38,14 +39,23 @@ async function callTool(toolName: string, args: any): Promise<any> {
   if (!response.ok) {
     let details = ""
     try {
-      const data = await response.json()
-      details = typeof data === "string" ? data : JSON.stringify(data)
+      const text = await response.text()
+      details = text
     } catch {
-      details = await response.text()
+      details = "Unknown error"
     }
     throw new Error(`MCP request failed: ${response.status} ${details}`)
   }
 
+  const contentType = response.headers.get("content-type") || ""
+
+  // Handle SSE streaming response
+  if (contentType.includes("text/event-stream")) {
+    const text = await response.text()
+    return parseSSEResponse(text)
+  }
+
+  // Handle regular JSON response
   const jsonRpcResponse = await response.json()
 
   // Handle JSON-RPC error response
@@ -55,6 +65,40 @@ async function callTool(toolName: string, args: any): Promise<any> {
 
   // Return the result from the JSON-RPC response
   return jsonRpcResponse.result
+}
+
+// Parse SSE response to extract the final result
+function parseSSEResponse(text: string): any {
+  const lines = text.split("\n")
+  let lastData = null
+
+  for (const line of lines) {
+    if (line.startsWith("data:")) {
+      const dataStr = line.slice(5).trim()
+      if (dataStr) {
+        try {
+          lastData = JSON.parse(dataStr)
+        } catch {
+          // Not valid JSON, skip
+        }
+      }
+    }
+  }
+
+  if (!lastData) {
+    throw new Error("No valid data found in SSE response")
+  }
+
+  // Handle JSON-RPC response wrapped in SSE
+  if (lastData.result) {
+    return lastData.result
+  }
+
+  if (lastData.error) {
+    throw new Error(lastData.error.message || "MCP tool call failed")
+  }
+
+  return lastData
 }
 
 export async function findRestaurants(args: FindRestaurantsInput) {

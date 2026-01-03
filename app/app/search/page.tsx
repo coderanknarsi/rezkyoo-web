@@ -8,6 +8,28 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 
+// Generate time options in 15-minute intervals
+function generateTimeOptions() {
+  const options: { value: string; label: string }[] = []
+  for (let hour = 0; hour < 24; hour++) {
+    for (let minute = 0; minute < 60; minute += 15) {
+      const h24 = hour.toString().padStart(2, "0")
+      const m = minute.toString().padStart(2, "0")
+      const value = `${h24}:${m}`
+
+      // Format for display (12-hour with AM/PM)
+      const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour
+      const ampm = hour < 12 ? "AM" : "PM"
+      const label = `${h12}:${m} ${ampm}`
+
+      options.push({ value, label })
+    }
+  }
+  return options
+}
+
+const TIME_OPTIONS = generateTimeOptions()
+
 export default function SearchPage() {
   const router = useRouter()
   const [cravingText, setCravingText] = React.useState("")
@@ -18,6 +40,9 @@ export default function SearchPage() {
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [debugResponse, setDebugResponse] = React.useState<any>(null)
+
+  const dateInputRef = React.useRef<HTMLInputElement>(null)
+  const timeSelectRef = React.useRef<HTMLSelectElement>(null)
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -69,6 +94,11 @@ export default function SearchPage() {
     }
   }
 
+  // Click anywhere on date container to open picker
+  const handleDateContainerClick = () => {
+    dateInputRef.current?.showPicker?.()
+  }
+
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-12">
       <Card>
@@ -118,23 +148,38 @@ export default function SearchPage() {
               <label className="text-sm font-medium" htmlFor="date">
                 Date
               </label>
-              <Input
-                id="date"
-                type="date"
-                value={date}
-                onChange={(event) => setDate(event.target.value)}
-              />
+              <div
+                onClick={handleDateContainerClick}
+                className="cursor-pointer"
+              >
+                <Input
+                  ref={dateInputRef}
+                  id="date"
+                  type="date"
+                  value={date}
+                  onChange={(event) => setDate(event.target.value)}
+                  className="cursor-pointer"
+                />
+              </div>
             </div>
             <div className="grid gap-2">
               <label className="text-sm font-medium" htmlFor="time">
                 Time
               </label>
-              <Input
+              <select
+                ref={timeSelectRef}
                 id="time"
-                type="time"
                 value={time}
                 onChange={(event) => setTime(event.target.value)}
-              />
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+              >
+                <option value="">Select a time</option>
+                {TIME_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
             </div>
             <Separator />
             <Button type="submit" disabled={loading}>
