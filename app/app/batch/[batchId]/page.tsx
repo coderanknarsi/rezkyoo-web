@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Phone, PhoneCall, PhoneOff, Check, Star, AlertCircle, RefreshCw, MapPin } from "lucide-react"
+import { Phone, PhoneCall, PhoneOff, Check, Star, AlertCircle, RefreshCw, MapPin, Lock } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { useAuth } from "@/lib/auth-context"
 
 const POLL_INTERVAL_MS = 5000 // 5 seconds during active calls
 
@@ -39,6 +40,7 @@ type BatchItem = {
   user_ratings_total?: number
   status?: CallStatus
   result?: CallResult
+  distance_miles?: number
 }
 
 function getStatusIcon(status?: CallStatus) {
@@ -76,9 +78,6 @@ function getStatusBadge(status?: CallStatus, result?: CallResult) {
   }
   if (status === "failed" || status === "no_answer" || status === "error") {
     return <Badge className="bg-red-100 text-red-700 border-red-300">Failed</Badge>
-  }
-  if (status === "pending") {
-    return <Badge className="bg-zinc-100 text-zinc-600 border-zinc-300">Queued</Badge>
   }
   return null
 }
@@ -154,6 +153,7 @@ function getOutcomeMessage(result?: CallResult) {
 export default function BatchStatusPage() {
   const params = useParams()
   const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
   const batchId = Array.isArray(params?.batchId)
     ? params.batchId[0]
     : params?.batchId
@@ -162,6 +162,7 @@ export default function BatchStatusPage() {
   const [status, setStatus] = React.useState<string | null>(null)
   const [paywallRequired, setPaywallRequired] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  const [isStartingCalls, setIsStartingCalls] = React.useState(false)
 
   const fetchStatus = React.useCallback(async () => {
     if (!batchId) return
@@ -195,7 +196,6 @@ export default function BatchStatusPage() {
   }, [batchId])
 
   React.useEffect(() => {
-    // Initial fetch
     fetchStatus()
 
     // Only poll while calls are in progress
@@ -206,6 +206,63 @@ export default function BatchStatusPage() {
       return () => clearInterval(interval)
     }
   }, [fetchStatus, status])
+
+  // Handle "Check Availability" click
+  const handleCheckAvailability = async () => {
+    // If not logged in, redirect to login with return URL
+    if (!user) {
+      const returnUrl = `/app/batch/${batchId}?startCalls=true`
+      router.push(`/login?returnUrl=${encodeURIComponent(returnUrl)}`)
+      return
+    }
+
+    // User is logged in - start calls
+    await startCalls()
+  }
+
+  // Start calls (requires auth)
+  const startCalls = async () => {
+    if (!batchId) return
+    setIsStartingCalls(true)
+    setError(null)
+
+    try {
+      const response = await fetch("/api/mcp/start-calls", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ batchId }),
+      })
+      const data = await response.json()
+
+      if (data?.ok === false) {
+        if (data.error?.includes("unauthorized") || data.error?.includes("Unauthorized")) {
+          // Redirect to login
+          const returnUrl = `/app/batch/${batchId}?startCalls=true`
+          router.push(`/login?returnUrl=${encodeURIComponent(returnUrl)}`)
+          return
+        }
+        setError(typeof data.error === "string" ? data.error : "Failed to start calls")
+      } else {
+        // Calls started, fetch status to see progress
+        await fetchStatus()
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed")
+    } finally {
+      setIsStartingCalls(false)
+    }
+  }
+
+  // Auto-start calls if redirected back from login with startCalls=true
+  React.useEffect(() => {
+    if (typeof window === "undefined") return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get("startCalls") === "true" && user && status === "found") {
+      // Remove the query param and start calls
+      window.history.replaceState({}, "", `/app/batch/${batchId}`)
+      startCalls()
+    }
+  }, [user, status, batchId])
 
   // Calculate progress stats
   const totalItems = items.length
@@ -220,27 +277,30 @@ export default function BatchStatusPage() {
   ).length
 
   const isCallsInProgress = status === "calling" || status === "running" || callingItems > 0
-  const allCallsComplete = totalItems > 0 && completedItems === totalItems
+  const allCallsComplete = totalItems > 0 && completedItems === totalItems && status === "completed"
+  const isFoundState = status === "found"
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50/50 via-white to-white dark:from-zinc-900 dark:via-zinc-950 dark:to-zinc-950">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-12">
-        {/* Header with progress */}
+        {/* Header */}
         <Card className="border-0 shadow-lg bg-white/80 backdrop-blur dark:bg-zinc-900/80">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-2xl bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-                  {isCallsInProgress ? "Checking Availability..." :
-                    allCallsComplete ? "Results" : "Starting Calls..."}
+                  {isFoundState ? "Restaurants Found!" :
+                    isCallsInProgress ? "Checking Availability..." :
+                      allCallsComplete ? "Results" : "Finding Restaurants..."}
                 </CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
+                  {isFoundState && `${items.length} restaurants match your search`}
                   {isCallsInProgress && `${callingItems} calling, ${pendingItems} queued`}
                   {allCallsComplete && `${available} available out of ${totalItems} called`}
                 </p>
               </div>
               {isCallsInProgress && (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-100 text-amber-700">
                   <RefreshCw className="h-4 w-4 animate-spin" />
                   <span className="text-sm font-medium">Live</span>
                 </div>
@@ -248,8 +308,8 @@ export default function BatchStatusPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {/* Progress bar */}
-            {totalItems > 0 && (
+            {/* Progress bar - only during calls */}
+            {(isCallsInProgress || allCallsComplete) && totalItems > 0 && (
               <div className="mb-4">
                 <div className="flex justify-between text-sm text-muted-foreground mb-2">
                   <span>{completedItems} of {totalItems} calls completed</span>
@@ -259,10 +319,10 @@ export default function BatchStatusPage() {
                     </span>
                   )}
                 </div>
-                <div className="h-3 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+                <div className="h-3 bg-zinc-200 rounded-full overflow-hidden">
                   <div
                     className={`h-full bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 transition-all duration-500 ${isCallsInProgress ? "animate-pulse" : ""}`}
-                    style={{ width: `${totalItems > 0 ? (completedItems / totalItems) * 100 : 0}%` }}
+                    style={{ width: `${(completedItems / totalItems) * 100}%` }}
                   />
                 </div>
               </div>
@@ -309,8 +369,8 @@ export default function BatchStatusPage() {
                   </div>
                 </div>
                 <div className="text-center">
-                  <div className="font-semibold text-lg">Starting calls...</div>
-                  <div className="text-sm text-muted-foreground">Checking availability at restaurants</div>
+                  <div className="font-semibold text-lg">Finding restaurants...</div>
+                  <div className="text-sm text-muted-foreground">Searching for the best matches</div>
                 </div>
               </CardContent>
             </Card>
@@ -318,6 +378,7 @@ export default function BatchStatusPage() {
             items.map((item) => {
               const displayId = item.place_id ?? item.id ?? "unknown"
               const callStatus = item.status as CallStatus | undefined
+              const showCallStatus = !isFoundState // Only show call status after calls started
 
               return (
                 <Card
@@ -333,10 +394,12 @@ export default function BatchStatusPage() {
                 >
                   <CardContent className="p-5">
                     <div className="flex items-start gap-4">
-                      {/* Status icon */}
-                      <div className="pt-1">
-                        {getStatusIcon(callStatus)}
-                      </div>
+                      {/* Status icon - only show during/after calls */}
+                      {showCallStatus && (
+                        <div className="pt-1">
+                          {getStatusIcon(callStatus)}
+                        </div>
+                      )}
 
                       <div className="flex-1 min-w-0">
                         {/* Header row */}
@@ -347,12 +410,15 @@ export default function BatchStatusPage() {
                             </h3>
                             <div className="flex items-center gap-4 mt-1 flex-wrap">
                               <RatingStars rating={item.rating} count={item.user_ratings_total} />
-                              <span className="text-sm text-muted-foreground">
-                                {item.phone ?? "No phone"}
-                              </span>
+                              {/* Distance - show if available */}
+                              {item.distance_miles && (
+                                <span className="text-sm text-muted-foreground">
+                                  {item.distance_miles.toFixed(1)} mi away
+                                </span>
+                              )}
                             </div>
                           </div>
-                          {getStatusBadge(callStatus, item.result)}
+                          {showCallStatus && getStatusBadge(callStatus, item.result)}
                         </div>
 
                         {/* Address */}
@@ -378,8 +444,8 @@ export default function BatchStatusPage() {
                           </div>
                         )}
 
-                        {/* Call result */}
-                        {item.result && (
+                        {/* Call result - only after calls */}
+                        {showCallStatus && item.result && (
                           <div className="mt-4">
                             {getOutcomeMessage(item.result)}
                           </div>
@@ -392,6 +458,41 @@ export default function BatchStatusPage() {
             })
           )}
         </div>
+
+        {/* Check Availability Button - only shown in "found" state */}
+        {isFoundState && items.length > 0 && (
+          <Card className="border-0 shadow-lg bg-gradient-to-r from-emerald-500 to-teal-500 sticky bottom-6">
+            <CardContent className="p-4">
+              <Button
+                onClick={handleCheckAvailability}
+                disabled={isStartingCalls || authLoading}
+                className="w-full h-14 text-lg font-semibold bg-white text-emerald-700 hover:bg-white/90 shadow-lg"
+              >
+                {isStartingCalls ? (
+                  <>
+                    <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
+                    Starting Calls...
+                  </>
+                ) : user ? (
+                  <>
+                    <Phone className="h-5 w-5 mr-2" />
+                    Check Availability at {items.length} Restaurant{items.length > 1 ? "s" : ""}
+                  </>
+                ) : (
+                  <>
+                    <Lock className="h-5 w-5 mr-2" />
+                    Sign Up to Check Availability
+                  </>
+                )}
+              </Button>
+              {!user && (
+                <p className="text-center text-white/80 text-sm mt-2">
+                  Free to create an account • Only pay when you book
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Paywall dialog */}
         <Dialog open={paywallRequired} onOpenChange={setPaywallRequired}>

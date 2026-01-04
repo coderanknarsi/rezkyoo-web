@@ -1,15 +1,16 @@
-import { requireUser } from "@/lib/auth"
 import { getBatchStatus } from "@/lib/mcp/client"
+
+// NOTE: This endpoint allows GUEST access (no auth required)
+// Users can view search results without signing up.
+// Phone numbers are not exposed in the "found" state.
 
 export async function POST(req: Request) {
   try {
-    await requireUser()
     const body = await req.json()
     const result = await getBatchStatus(body)
     return Response.json(result)
   } catch (error) {
     const message = error instanceof Error ? error.message : "Request failed"
-    const status = message.toLowerCase().includes("unauthorized") ? 401 : 500
-    return Response.json({ ok: false, error: message }, { status })
+    return Response.json({ ok: false, error: message }, { status: 500 })
   }
 }
