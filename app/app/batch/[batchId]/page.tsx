@@ -303,14 +303,18 @@ export default function BatchStatusPage() {
   const isFoundState = status === "found"
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50/50 via-white to-white dark:from-zinc-900 dark:via-zinc-950 dark:to-zinc-950">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-12">
+    <div className="min-h-screen bg-gradient-to-b from-red-50/30 via-white to-white dark:from-zinc-900 dark:via-zinc-950 dark:to-zinc-950 relative overflow-hidden">
+      {/* Background decorations */}
+      <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-red-400/10 blur-3xl" />
+      <div className="absolute top-1/3 -left-40 h-80 w-80 rounded-full bg-orange-400/10 blur-3xl" />
+
+      <div className="relative mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-12">
         {/* Header */}
         <Card className="border-0 shadow-lg bg-white/80 backdrop-blur dark:bg-zinc-900/80">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-2xl bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                <CardTitle className="text-2xl font-bold">
                   {isFoundState ? "Restaurants Found!" :
                     isCallsInProgress ? "Checking Availability..." :
                       allCallsComplete ? "Results" : "Finding Restaurants..."}
@@ -322,7 +326,7 @@ export default function BatchStatusPage() {
                 </p>
               </div>
               {isCallsInProgress && (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-100 text-amber-700">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-100 text-red-700">
                   <RefreshCw className="h-4 w-4 animate-spin" />
                   <span className="text-sm font-medium">Live</span>
                 </div>
@@ -378,14 +382,14 @@ export default function BatchStatusPage() {
                 <div className="flex justify-between text-sm text-muted-foreground mb-2">
                   <span>{completedItems} of {totalItems} calls completed</span>
                   {holdsConfirmed > 0 && (
-                    <span className="text-emerald-600 font-semibold">
+                    <span className="text-red-600 font-semibold">
                       {holdsConfirmed} hold{holdsConfirmed > 1 ? "s" : ""} confirmed! 🎉
                     </span>
                   )}
                 </div>
                 <div className="h-3 bg-zinc-200 rounded-full overflow-hidden">
                   <div
-                    className={`h-full bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 transition-all duration-500 ${isCallsInProgress ? "animate-pulse" : ""}`}
+                    className={`h-full bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 transition-all duration-500 ${isCallsInProgress ? "animate-pulse" : ""}`}
                     style={{ width: `${(completedItems / totalItems) * 100}%` }}
                   />
                 </div>
@@ -399,13 +403,13 @@ export default function BatchStatusPage() {
                   <div className="text-3xl font-bold">{totalItems}</div>
                   <div className="text-xs text-muted-foreground font-medium">Called</div>
                 </div>
-                <div className="rounded-xl bg-gradient-to-br from-emerald-100 to-teal-50 p-4 shadow-sm">
-                  <div className="text-3xl font-bold text-emerald-600">{available}</div>
-                  <div className="text-xs text-emerald-600 font-medium">Available</div>
+                <div className="rounded-xl bg-gradient-to-br from-green-100 to-emerald-50 p-4 shadow-sm">
+                  <div className="text-3xl font-bold text-green-600">{available}</div>
+                  <div className="text-xs text-green-600 font-medium">Available</div>
                 </div>
-                <div className="rounded-xl bg-gradient-to-br from-blue-100 to-indigo-50 p-4 shadow-sm">
-                  <div className="text-3xl font-bold text-blue-600">{holdsConfirmed}</div>
-                  <div className="text-xs text-blue-600 font-medium">On Hold</div>
+                <div className="rounded-xl bg-gradient-to-br from-red-100 to-orange-50 p-4 shadow-sm">
+                  <div className="text-3xl font-bold text-red-600">{holdsConfirmed}</div>
+                  <div className="text-xs text-red-600 font-medium">On Hold</div>
                 </div>
               </div>
             )}
@@ -427,8 +431,8 @@ export default function BatchStatusPage() {
             <Card className="border-0 shadow-md">
               <CardContent className="flex flex-col items-center justify-center gap-4 py-16">
                 <div className="relative">
-                  <div className="absolute inset-0 rounded-full bg-emerald-500/20 animate-ping" />
-                  <div className="relative rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 p-4">
+                  <div className="absolute inset-0 rounded-full bg-red-500/20 animate-ping" />
+                  <div className="relative rounded-full bg-gradient-to-r from-red-500 to-orange-500 p-4">
                     <RefreshCw className="h-6 w-6 text-white animate-spin" />
                   </div>
                 </div>
@@ -527,12 +531,12 @@ export default function BatchStatusPage() {
 
         {/* Check Availability Button - only shown in "found" state */}
         {isFoundState && items.length > 0 && (
-          <Card className="border-0 shadow-lg bg-gradient-to-r from-emerald-500 to-teal-500 sticky bottom-6">
+          <Card className="border-0 shadow-lg bg-gradient-to-r from-red-500 to-red-600 sticky bottom-6">
             <CardContent className="p-4">
               <Button
                 onClick={handleCheckAvailability}
                 disabled={isStartingCalls || authLoading}
-                className="w-full h-14 text-lg font-semibold bg-white text-emerald-700 hover:bg-white/90 shadow-lg"
+                className="w-full h-14 text-lg font-semibold bg-white text-red-700 hover:bg-white/90 shadow-lg"
               >
                 {isStartingCalls ? (
                   <>
