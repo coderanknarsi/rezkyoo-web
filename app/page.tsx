@@ -13,18 +13,18 @@ export default function Home() {
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-zinc-50 to-white dark:from-zinc-950 dark:to-zinc-900">
       {/* Navigation */}
       <nav className="sticky top-0 z-50 border-b bg-white/80 backdrop-blur-sm dark:bg-zinc-950/80">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-          <Link href="/" className="flex items-center gap-2">
+        <div className="mx-auto flex h-20 max-w-6xl items-center justify-between px-6">
+          <Link href="/" className="flex items-center">
             <Image
-              src="/logo.jpg"
+              src="/logo-white.png"
               alt="RezKyoo"
-              width={140}
-              height={40}
+              width={180}
+              height={45}
               className="h-10 w-auto"
               priority
             />
           </Link>
-          <Button asChild size="sm" className="bg-red-500 hover:bg-red-600">
+          <Button asChild size="lg" className="bg-red-500 hover:bg-red-600">
             <Link href="/app">Get Started</Link>
           </Button>
         </div>
@@ -300,9 +300,9 @@ export default function Home() {
               <Image
                 src="/logo.jpg"
                 alt="RezKyoo"
-                width={120}
-                height={35}
-                className="h-8 w-auto"
+                width={150}
+                height={45}
+                className="h-10 w-auto"
               />
             </Link>
             <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-6 text-sm text-zinc-500 dark:text-zinc-400">
