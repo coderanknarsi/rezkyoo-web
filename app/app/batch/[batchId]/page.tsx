@@ -452,17 +452,17 @@ export default function BatchStatusPage() {
                 <Card
                   key={displayId}
                   className={`border-0 shadow-md transition-all ${item.result?.outcome === "hold_confirmed"
-                    ? "bg-gradient-to-r from-emerald-50 to-teal-50 ring-2 ring-emerald-300"
+                    ? "bg-gradient-to-r from-green-50 to-emerald-50 ring-2 ring-green-300 shadow-green-100"
                     : item.result?.outcome === "available"
-                      ? "bg-gradient-to-r from-blue-50 to-indigo-50"
+                      ? "bg-gradient-to-r from-green-50 to-teal-50 ring-1 ring-green-200"
                       : item.status === "speaking"
-                        ? "bg-blue-50/50 ring-1 ring-blue-200"
+                        ? "bg-gradient-to-r from-blue-50 to-indigo-50 ring-1 ring-blue-200"
                         : item.status === "calling"
-                          ? "bg-amber-50/50"
-                          : "bg-white"
+                          ? "bg-gradient-to-r from-amber-50 to-orange-50 ring-1 ring-amber-200"
+                          : "bg-white/80 backdrop-blur hover:shadow-lg transition-shadow"
                     }`}
                 >
-                  <CardContent className="p-5">
+                  <CardContent className="p-6">
                     <div className="flex items-start gap-4">
                       {/* Status icon - only show during/after calls */}
                       {showCallStatus && (
@@ -506,7 +506,7 @@ export default function BatchStatusPage() {
                               <Badge
                                 key={type}
                                 variant="secondary"
-                                className="text-xs bg-zinc-100 hover:bg-zinc-200"
+                                className="text-xs bg-red-50 text-red-700 border border-red-200 hover:bg-red-100"
                               >
                                 {type.replace(/_/g, " ")}
                               </Badge>
