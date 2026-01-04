@@ -232,139 +232,185 @@ export default function SearchPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-12">
-      <Card>
-        <CardHeader>
-          <CardTitle>Find restaurants</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-            <div className="grid gap-2">
-              <label className="text-sm font-medium" htmlFor="cravingText">
-                What are you craving?
-              </label>
-              <Input
-                id="cravingText"
-                value={cravingText}
-                onChange={(event) => setCravingText(event.target.value)}
-                placeholder="Sushi, burger, pasta..."
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <label className="text-sm font-medium" htmlFor="location">
-                Location
-              </label>
-              <div className="flex gap-2">
+    <div className="min-h-screen bg-gradient-to-b from-red-50/30 via-white to-white dark:from-zinc-900 dark:via-zinc-950 dark:to-zinc-950 relative overflow-hidden">
+      {/* Background decorations */}
+      <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-red-400/10 blur-3xl" />
+      <div className="absolute top-1/2 -left-40 h-80 w-80 rounded-full bg-orange-400/10 blur-3xl" />
+
+      <div className="relative mx-auto flex w-full max-w-2xl flex-col gap-8 px-6 py-16">
+        {/* Header */}
+        <div className="text-center space-y-3">
+          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            Find Your Perfect Table
+          </h1>
+          <p className="text-muted-foreground text-lg">
+            Tell us what you're craving and we'll call restaurants for you
+          </p>
+        </div>
+
+        {/* Main Form Card */}
+        <Card className="border-0 shadow-xl bg-white/80 backdrop-blur dark:bg-zinc-900/80">
+          <CardContent className="pt-8 pb-6">
+            <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
+              {/* Craving */}
+              <div className="grid gap-2">
+                <label className="text-sm font-semibold text-red-600" htmlFor="cravingText">
+                  What are you craving?
+                </label>
                 <Input
-                  id="location"
-                  value={location}
-                  onChange={(event) => setLocation(event.target.value)}
-                  placeholder="City or neighborhood"
+                  id="cravingText"
+                  value={cravingText}
+                  onChange={(event) => setCravingText(event.target.value)}
+                  placeholder="Sushi, Italian, steakhouse..."
                   required
-                  className="flex-1"
+                  className="h-12 text-base border-zinc-200 focus:border-red-400 focus:ring-red-400"
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={handleGetLocation}
-                  disabled={gettingLocation}
-                  title="Use my location"
+              </div>
+
+              {/* Location */}
+              <div className="grid gap-2">
+                <label className="text-sm font-semibold text-red-600" htmlFor="location">
+                  Location
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    id="location"
+                    value={location}
+                    onChange={(event) => setLocation(event.target.value)}
+                    placeholder="City, neighborhood, or address"
+                    required
+                    className="flex-1 h-12 text-base border-zinc-200 focus:border-red-400 focus:ring-red-400"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={handleGetLocation}
+                    disabled={gettingLocation}
+                    title="Use my location"
+                    className="h-12 w-12 shrink-0 border-zinc-200 hover:bg-red-50 hover:border-red-300"
+                  >
+                    <MapPin className={`h-5 w-5 ${gettingLocation ? "animate-pulse text-red-500" : "text-red-500"}`} />
+                  </Button>
+                </div>
+                {locationError && (
+                  <p className="text-xs text-red-500">{locationError}</p>
+                )}
+              </div>
+
+              {/* Party size & Date in a row */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <label className="text-sm font-semibold text-red-600" htmlFor="partySize">
+                    Party size
+                  </label>
+                  <Input
+                    id="partySize"
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={partySize}
+                    onChange={(event) => setPartySize(event.target.value)}
+                    placeholder="2"
+                    className="h-12 text-base border-zinc-200 focus:border-red-400 focus:ring-red-400"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <label className="text-sm font-semibold text-red-600" htmlFor="date">
+                    Date
+                  </label>
+                  <div
+                    onClick={handleDateContainerClick}
+                    className="relative cursor-pointer"
+                  >
+                    <input
+                      ref={dateInputRef}
+                      id="date"
+                      type="date"
+                      value={date}
+                      min={getTodayDate()}
+                      onChange={(event) => setDate(event.target.value)}
+                      className="flex h-12 w-full rounded-md border border-zinc-200 bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Time */}
+              <div className="grid gap-2">
+                <label className="text-sm font-semibold text-red-600" htmlFor="time">
+                  Time
+                </label>
+                <select
+                  id="time"
+                  value={time}
+                  onChange={(event) => setTime(event.target.value)}
+                  className="flex h-12 w-full rounded-md border border-zinc-200 bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
                 >
-                  <MapPin className={`h-4 w-4 ${gettingLocation ? "animate-pulse" : ""}`} />
-                </Button>
+                  <option value="">Select a time</option>
+                  {availableTimeOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                {date === getTodayDate() && availableTimeOptions.length < ALL_TIME_OPTIONS.length && (
+                  <p className="text-xs text-muted-foreground">
+                    Only showing times at least 30 min from now
+                  </p>
+                )}
               </div>
-              {locationError && (
-                <p className="text-sm text-amber-600">{locationError}</p>
-              )}
-            </div>
-            <div className="grid gap-2">
-              <label className="text-sm font-medium" htmlFor="partySize">
-                Party size
-              </label>
-              <Input
-                id="partySize"
-                type="number"
-                min={1}
-                value={partySize}
-                onChange={(event) => setPartySize(event.target.value)}
-                placeholder="2"
-              />
-            </div>
-            <div className="grid gap-2">
-              <label className="text-sm font-medium" htmlFor="date">
-                Date
-              </label>
-              <div
-                onClick={handleDateContainerClick}
-                className="cursor-pointer"
-              >
-                <Input
-                  ref={dateInputRef}
-                  id="date"
-                  type="date"
-                  min={getTodayDate()} // Prevent past dates
-                  value={date}
-                  onChange={(event) => setDate(event.target.value)}
-                  className="cursor-pointer"
-                />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <label className="text-sm font-medium" htmlFor="time">
-                Time
-              </label>
-              <select
-                id="time"
-                value={time}
-                onChange={(event) => setTime(event.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
-              >
-                <option value="">Select a time</option>
-                {availableTimeOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              {date === getTodayDate() && availableTimeOptions.length < ALL_TIME_OPTIONS.length && (
-                <p className="text-xs text-muted-foreground">
-                  Only showing times at least 30 min from now
-                </p>
-              )}
-            </div>
-            <Separator />
-            <Button type="submit" disabled={loading}>
-              {loading ? "Searching..." : "Search"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
 
-      {error ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-destructive">Search error</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            {error}
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                disabled={loading}
+                className="h-14 text-lg font-semibold bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg shadow-red-500/25"
+              >
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Searching...
+                  </span>
+                ) : (
+                  "Find Tables"
+                )}
+              </Button>
+
+              {/* Trust text */}
+              <p className="text-center text-xs text-muted-foreground">
+                🔒 We'll call restaurants on your behalf. No hidden fees.
+              </p>
+            </form>
           </CardContent>
         </Card>
-      ) : null}
 
-      {debugResponse ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Debug response</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <pre className="whitespace-pre-wrap text-sm">
-              {JSON.stringify(debugResponse, null, 2)}
-            </pre>
-          </CardContent>
-        </Card>
-      ) : null}
+        {/* Error display */}
+        {error && (
+          <Card className="border-red-200 bg-red-50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-red-600 text-lg">Search error</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-red-700">
+              {error}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Debug response (only in development) */}
+        {debugResponse && process.env.NODE_ENV === 'development' && (
+          <Card className="border-zinc-200">
+            <CardHeader>
+              <CardTitle className="text-sm text-muted-foreground">Debug response</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <pre className="whitespace-pre-wrap text-xs text-muted-foreground overflow-auto max-h-40">
+                {JSON.stringify(debugResponse, null, 2)}
+              </pre>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   )
 }
