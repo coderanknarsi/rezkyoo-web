@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Phone, PhoneCall, PhoneOff, Check, Star, AlertCircle, RefreshCw, MapPin, Lock } from "lucide-react"
+import { Phone, PhoneCall, PhoneOff, Check, Star, AlertCircle, RefreshCw, MapPin, Lock, MessageSquare } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -19,7 +19,7 @@ import { useAuth } from "@/lib/auth-context"
 
 const POLL_INTERVAL_MS = 5000 // 5 seconds during active calls
 
-type CallStatus = "pending" | "calling" | "completed" | "failed" | "no_answer" | "skipped" | "error"
+type CallStatus = "pending" | "calling" | "speaking" | "completed" | "failed" | "no_answer" | "skipped" | "error"
 
 type CallResult = {
   outcome?: "available" | "not_available" | "hold_confirmed" | "voicemail" | "no_answer" | "failed"
@@ -41,12 +41,16 @@ type BatchItem = {
   status?: CallStatus
   result?: CallResult
   distance_miles?: number
+  lat?: number
+  lng?: number
 }
 
 function getStatusIcon(status?: CallStatus) {
   switch (status) {
     case "calling":
       return <PhoneCall className="h-5 w-5 text-amber-500 animate-pulse" />
+    case "speaking":
+      return <MessageSquare className="h-5 w-5 text-blue-500 animate-pulse" />
     case "completed":
       return <Check className="h-5 w-5 text-emerald-500" />
     case "failed":
@@ -63,6 +67,9 @@ function getStatusIcon(status?: CallStatus) {
 function getStatusBadge(status?: CallStatus, result?: CallResult) {
   if (status === "calling") {
     return <Badge className="bg-amber-100 text-amber-700 border-amber-300 animate-pulse">Calling...</Badge>
+  }
+  if (status === "speaking") {
+    return <Badge className="bg-blue-100 text-blue-700 border-blue-300 animate-pulse">Speaking with staff...</Badge>
   }
   if (status === "completed" && result?.outcome === "hold_confirmed") {
     return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300">Hold Confirmed ✓</Badge>
@@ -163,6 +170,14 @@ export default function BatchStatusPage() {
   const [paywallRequired, setPaywallRequired] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [isStartingCalls, setIsStartingCalls] = React.useState(false)
+  const [mapUrl, setMapUrl] = React.useState<string | null>(null)
+  const [query, setQuery] = React.useState<{
+    location?: string
+    party_size?: number
+    date?: string
+    time?: string
+    craving?: { chips?: string[] }
+  } | null>(null)
 
   const fetchStatus = React.useCallback(async () => {
     if (!batchId) return
@@ -189,6 +204,12 @@ export default function BatchStatusPage() {
       }
       if (data?.paywall_required) {
         setPaywallRequired(true)
+      }
+      if (data?.map_url) {
+        setMapUrl(data.map_url)
+      }
+      if (data?.query) {
+        setQuery(data.query)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Request failed")
@@ -269,14 +290,15 @@ export default function BatchStatusPage() {
   const completedItems = items.filter(i =>
     ["completed", "failed", "no_answer", "error", "skipped"].includes(i.status || "")
   ).length
-  const callingItems = items.filter(i => i.status === "calling").length
+  const callingItems = items.filter(i => i.status === "calling" || i.status === "speaking").length
+  const speakingItems = items.filter(i => i.status === "speaking").length
   const pendingItems = items.filter(i => i.status === "pending").length
   const holdsConfirmed = items.filter(i => i.result?.outcome === "hold_confirmed").length
   const available = items.filter(i =>
     i.result?.outcome === "available" || i.result?.outcome === "hold_confirmed"
   ).length
 
-  const isCallsInProgress = status === "calling" || status === "running" || callingItems > 0
+  const isCallsInProgress = status === "calling" || status === "running" || callingItems > 0 || speakingItems > 0
   const allCallsComplete = totalItems > 0 && completedItems === totalItems && status === "completed"
   const isFoundState = status === "found"
 
@@ -306,8 +328,50 @@ export default function BatchStatusPage() {
                 </div>
               )}
             </div>
+
+            {/* Search Query Banner */}
+            {query && (
+              <div className="flex flex-wrap items-center gap-2 mt-3 text-sm">
+                {query.craving?.chips?.map((chip, i) => (
+                  <span key={i} className="px-2 py-1 rounded-full bg-red-100 text-red-700 font-medium">
+                    {chip}
+                  </span>
+                ))}
+                {query.party_size && (
+                  <span className="px-2 py-1 rounded-full bg-zinc-100 text-zinc-700">
+                    {query.party_size} guests
+                  </span>
+                )}
+                {query.time && (
+                  <span className="px-2 py-1 rounded-full bg-zinc-100 text-zinc-700">
+                    {query.time}
+                  </span>
+                )}
+                {query.date && (
+                  <span className="px-2 py-1 rounded-full bg-zinc-100 text-zinc-700">
+                    {query.date}
+                  </span>
+                )}
+                {query.location && (
+                  <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    {query.location.length > 30 ? query.location.substring(0, 30) + "..." : query.location}
+                  </span>
+                )}
+              </div>
+            )}
           </CardHeader>
           <CardContent>
+            {/* Static Map */}
+            {mapUrl && (
+              <div className="mb-4 rounded-lg overflow-hidden shadow-sm border">
+                <img
+                  src={mapUrl}
+                  alt="Map showing restaurant locations"
+                  className="w-full h-48 object-cover"
+                />
+              </div>
+            )}
             {/* Progress bar - only during calls */}
             {(isCallsInProgress || allCallsComplete) && totalItems > 0 && (
               <div className="mb-4">
@@ -384,9 +448,11 @@ export default function BatchStatusPage() {
                 <Card
                   key={displayId}
                   className={`border-0 shadow-md transition-all ${item.result?.outcome === "hold_confirmed"
-                      ? "bg-gradient-to-r from-emerald-50 to-teal-50 ring-2 ring-emerald-300"
-                      : item.result?.outcome === "available"
-                        ? "bg-gradient-to-r from-blue-50 to-indigo-50"
+                    ? "bg-gradient-to-r from-emerald-50 to-teal-50 ring-2 ring-emerald-300"
+                    : item.result?.outcome === "available"
+                      ? "bg-gradient-to-r from-blue-50 to-indigo-50"
+                      : item.status === "speaking"
+                        ? "bg-blue-50/50 ring-1 ring-blue-200"
                         : item.status === "calling"
                           ? "bg-amber-50/50"
                           : "bg-white"

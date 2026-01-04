@@ -13,14 +13,14 @@ export default function Home() {
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-zinc-50 to-white dark:from-zinc-950 dark:to-zinc-900">
       {/* Navigation */}
       <nav className="sticky top-0 z-50 border-b bg-white/80 backdrop-blur-sm dark:bg-zinc-950/80">
-        <div className="mx-auto flex h-20 max-w-6xl items-center justify-between px-6">
+        <div className="mx-auto flex h-24 max-w-6xl items-center justify-between px-6">
           <Link href="/" className="flex items-center">
             <Image
-              src="/logo-white.png"
+              src="/logo-main.jpg"
               alt="RezKyoo"
-              width={180}
-              height={45}
-              className="h-10 w-auto"
+              width={240}
+              height={60}
+              className="h-14 w-auto"
               priority
             />
           </Link>
@@ -94,7 +94,7 @@ export default function Home() {
                 <div className="absolute -bottom-4 -left-4 rounded-lg bg-white dark:bg-zinc-900 shadow-lg p-3 border animate-pulse">
                   <div className="flex items-center gap-2">
                     <div className="h-3 w-3 rounded-full bg-yellow-500 animate-pulse" />
-                    <span className="text-sm font-medium">Calling 3 restaurants...</span>
+                    <span className="text-sm font-medium">Calling 5 restaurants...</span>
                   </div>
                 </div>
 
@@ -102,6 +102,13 @@ export default function Home() {
                   <div className="flex items-center gap-2">
                     <div className="h-3 w-3 rounded-full bg-green-500" />
                     <span className="text-sm font-medium text-green-600">Table Available!</span>
+                  </div>
+                </div>
+
+                <div className="absolute top-1/2 -left-6 -translate-y-1/2 rounded-lg bg-white dark:bg-zinc-900 shadow-lg p-3 border">
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 w-3 rounded-full bg-blue-500 animate-pulse" />
+                    <span className="text-sm font-medium text-blue-600">Speaking with staff...</span>
                   </div>
                 </div>
               </div>
@@ -298,10 +305,10 @@ export default function Home() {
           <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
             <Link href="/" className="flex items-center">
               <Image
-                src="/logo.jpg"
+                src="/logo-main.jpg"
                 alt="RezKyoo"
-                width={150}
-                height={45}
+                width={160}
+                height={40}
                 className="h-10 w-auto"
               />
             </Link>
