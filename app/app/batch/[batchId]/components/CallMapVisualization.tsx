@@ -57,35 +57,6 @@ function getStatusText(status: string, outcome?: string): string {
 }
 
 export function CallMapVisualization({ userLat, userLng, restaurants, mapUrl }: CallMapVisualizationProps) {
-    // Generate styled Google Static Map URL if not provided
-    const generateStyledMapUrl = () => {
-        const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-        if (!apiKey) return null
-
-        // Dark mode style for modern look
-        const style = [
-            "feature:all|element:geometry|color:0x1a1a2e",
-            "feature:all|element:labels.text.fill|color:0x8892b0",
-            "feature:all|element:labels.text.stroke|color:0x1a1a2e",
-            "feature:road|element:geometry|color:0x2d2d44",
-            "feature:road|element:geometry.stroke|color:0x3d3d5c",
-            "feature:water|element:geometry|color:0x0d1b2a",
-        ].map(s => `style=${encodeURIComponent(s)}`).join("&")
-
-        // User marker (red)
-        const userMarker = `markers=color:red|${userLat},${userLng}`
-
-        // Restaurant markers
-        const restaurantMarkers = restaurants
-            .filter(r => r.lat && r.lng)
-            .map(r => `markers=color:0x${r.status === "calling" ? "f59e0b" : r.outcome === "hold_confirmed" ? "22c55e" : "6b7280"}|${r.lat},${r.lng}`)
-            .join("&")
-
-        return `https://maps.googleapis.com/maps/api/staticmap?center=${userLat},${userLng}&zoom=12&size=400x400&${style}&${userMarker}&${restaurantMarkers ? `&${restaurantMarkers}` : ""}&key=${apiKey}`
-    }
-
-    const effectiveMapUrl = mapUrl || generateStyledMapUrl()
-
     // Count statuses
     const calling = restaurants.filter(r => r.status === "calling").length
     const speaking = restaurants.filter(r => r.status === "speaking").length
@@ -97,9 +68,9 @@ export function CallMapVisualization({ userLat, userLng, restaurants, mapUrl }: 
             {/* Map Section */}
             <div className="relative flex-1 min-h-[300px] lg:min-h-[400px] rounded-2xl overflow-hidden shadow-xl">
                 {/* Map Background */}
-                {effectiveMapUrl ? (
+                {mapUrl ? (
                     <img
-                        src={effectiveMapUrl}
+                        src={mapUrl}
                         alt="Map showing restaurants"
                         className="absolute inset-0 w-full h-full object-cover"
                     />
@@ -182,7 +153,7 @@ export function CallMapVisualization({ userLat, userLng, restaurants, mapUrl }: 
                             <div
                                 key={r.id}
                                 className={`px-4 py-3 flex items-center gap-3 transition-colors ${isActive ? "bg-gradient-to-r from-amber-50 to-transparent" :
-                                        r.outcome === "hold_confirmed" ? "bg-gradient-to-r from-green-50 to-transparent" : ""
+                                    r.outcome === "hold_confirmed" ? "bg-gradient-to-r from-green-50 to-transparent" : ""
                                     }`}
                             >
                                 {/* Status icon */}
