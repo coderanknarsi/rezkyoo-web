@@ -388,6 +388,7 @@ export default function BatchStatusPage() {
                 <CallMapVisualization
                   userLat={userLocation.lat}
                   userLng={userLocation.lng}
+                  mapUrl={mapUrl}
                   restaurants={items.map(item => ({
                     id: item.id || item.place_id || item.name || '',
                     name: item.name || 'Unknown',

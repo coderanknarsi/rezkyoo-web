@@ -197,6 +197,9 @@ export default function SearchPage() {
 
     if (time) {
       payload.time = time
+      payload.intent = "specific_time" // User picked a specific time
+    } else {
+      payload.intent = "next_available" // Flexible on time
     }
 
     try {

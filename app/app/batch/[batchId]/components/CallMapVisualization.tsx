@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import { Phone, PhoneCall, Check, X, Clock, MessageSquare } from "lucide-react"
 
 interface Restaurant {
     id: string
@@ -15,314 +16,196 @@ interface CallMapVisualizationProps {
     userLat: number
     userLng: number
     restaurants: Restaurant[]
-}
-
-// Convert lat/lng to x/y position relative to center
-function latLngToPosition(
-    userLat: number,
-    userLng: number,
-    targetLat: number,
-    targetLng: number,
-    scale: number = 15000
-): { x: number; y: number } {
-    const dx = (targetLng - userLng) * scale
-    const dy = (userLat - targetLat) * scale // Inverted because SVG y increases downward
-
-    // Clamp to reasonable bounds
-    const maxOffset = 120
-    const clampedX = Math.max(-maxOffset, Math.min(maxOffset, dx))
-    const clampedY = Math.max(-maxOffset, Math.min(maxOffset, dy))
-
-    return { x: 150 + clampedX, y: 150 + clampedY }
+    mapUrl?: string | null
 }
 
 // Get status-based colors
-function getStatusColor(status: string, outcome?: string): string {
-    if (outcome === "hold_confirmed") return "#22c55e" // green
-    if (outcome === "available") return "#22c55e" // green
-    if (outcome === "unavailable" || outcome === "no_answer" || outcome === "voicemail") return "#ef4444" // red
-    if (status === "speaking") return "#3b82f6" // blue
-    if (status === "calling") return "#f59e0b" // amber
-    if (status === "completed") return "#6b7280" // gray
-    if (status === "error" || status === "skipped") return "#ef4444" // red
-    return "#9ca3af" // gray for pending
+function getStatusColor(status: string, outcome?: string): { bg: string; text: string; ring: string } {
+    if (outcome === "hold_confirmed") return { bg: "bg-green-500", text: "text-green-600", ring: "ring-green-400" }
+    if (outcome === "available") return { bg: "bg-green-500", text: "text-green-600", ring: "ring-green-400" }
+    if (outcome === "unavailable" || outcome === "no_answer" || outcome === "voicemail") return { bg: "bg-red-500", text: "text-red-600", ring: "ring-red-400" }
+    if (status === "speaking") return { bg: "bg-blue-500", text: "text-blue-600", ring: "ring-blue-400" }
+    if (status === "calling") return { bg: "bg-amber-500", text: "text-amber-600", ring: "ring-amber-400" }
+    if (status === "completed") return { bg: "bg-gray-400", text: "text-gray-600", ring: "ring-gray-300" }
+    if (status === "error" || status === "skipped") return { bg: "bg-red-500", text: "text-red-600", ring: "ring-red-400" }
+    return { bg: "bg-gray-300", text: "text-gray-500", ring: "ring-gray-200" }
 }
 
-// Get status icon
-function getStatusIcon(status: string, outcome?: string): string {
-    if (outcome === "hold_confirmed") return "✓"
-    if (outcome === "available") return "✓"
-    if (outcome === "unavailable" || outcome === "no_answer" || outcome === "voicemail") return "✗"
-    if (status === "speaking") return "💬"
-    if (status === "calling") return "📞"
-    if (status === "error" || status === "skipped") return "✗"
-    return "•"
+// Get status icon component
+function getStatusIcon(status: string, outcome?: string) {
+    if (outcome === "hold_confirmed" || outcome === "available") return <Check className="w-4 h-4" />
+    if (outcome === "unavailable" || outcome === "no_answer" || outcome === "voicemail") return <X className="w-4 h-4" />
+    if (status === "speaking") return <MessageSquare className="w-4 h-4" />
+    if (status === "calling") return <PhoneCall className="w-4 h-4 animate-pulse" />
+    if (status === "error" || status === "skipped") return <X className="w-4 h-4" />
+    return <Clock className="w-4 h-4" />
 }
 
-export function CallMapVisualization({ userLat, userLng, restaurants }: CallMapVisualizationProps) {
-    // Calculate positions for each restaurant
-    const restaurantPositions = restaurants.map((r) => {
-        if (r.lat && r.lng) {
-            return { ...r, ...latLngToPosition(userLat, userLng, r.lat, r.lng) }
-        }
-        // Fallback: distribute evenly in a circle
-        const index = restaurants.indexOf(r)
-        const angle = (index * 2 * Math.PI) / restaurants.length - Math.PI / 2
-        const radius = 100
-        return {
-            ...r,
-            x: 150 + Math.cos(angle) * radius,
-            y: 150 + Math.sin(angle) * radius,
-        }
-    })
+// Get status text
+function getStatusText(status: string, outcome?: string): string {
+    if (outcome === "hold_confirmed") return "Hold Confirmed! 🎉"
+    if (outcome === "available") return "Available"
+    if (outcome === "unavailable") return "Not Available"
+    if (outcome === "no_answer") return "No Answer"
+    if (outcome === "voicemail") return "Voicemail"
+    if (status === "speaking") return "Speaking..."
+    if (status === "calling") return "Calling..."
+    if (status === "completed") return "Completed"
+    if (status === "error") return "Error"
+    if (status === "skipped") return "Skipped"
+    return "Waiting..."
+}
+
+export function CallMapVisualization({ userLat, userLng, restaurants, mapUrl }: CallMapVisualizationProps) {
+    // Generate styled Google Static Map URL if not provided
+    const generateStyledMapUrl = () => {
+        const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+        if (!apiKey) return null
+
+        // Dark mode style for modern look
+        const style = [
+            "feature:all|element:geometry|color:0x1a1a2e",
+            "feature:all|element:labels.text.fill|color:0x8892b0",
+            "feature:all|element:labels.text.stroke|color:0x1a1a2e",
+            "feature:road|element:geometry|color:0x2d2d44",
+            "feature:road|element:geometry.stroke|color:0x3d3d5c",
+            "feature:water|element:geometry|color:0x0d1b2a",
+        ].map(s => `style=${encodeURIComponent(s)}`).join("&")
+
+        // User marker (red)
+        const userMarker = `markers=color:red|${userLat},${userLng}`
+
+        // Restaurant markers
+        const restaurantMarkers = restaurants
+            .filter(r => r.lat && r.lng)
+            .map(r => `markers=color:0x${r.status === "calling" ? "f59e0b" : r.outcome === "hold_confirmed" ? "22c55e" : "6b7280"}|${r.lat},${r.lng}`)
+            .join("&")
+
+        return `https://maps.googleapis.com/maps/api/staticmap?center=${userLat},${userLng}&zoom=12&size=400x400&${style}&${userMarker}&${restaurantMarkers ? `&${restaurantMarkers}` : ""}&key=${apiKey}`
+    }
+
+    const effectiveMapUrl = mapUrl || generateStyledMapUrl()
+
+    // Count statuses
+    const calling = restaurants.filter(r => r.status === "calling").length
+    const speaking = restaurants.filter(r => r.status === "speaking").length
+    const completed = restaurants.filter(r => r.status === "completed" || r.status === "error" || r.status === "skipped").length
+    const confirmed = restaurants.filter(r => r.outcome === "hold_confirmed").length
 
     return (
-        <div className="relative w-full max-w-md mx-auto aspect-square">
-            {/* Background gradient */}
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-hidden">
-                {/* Subtle grid pattern */}
-                <div
-                    className="absolute inset-0 opacity-10"
-                    style={{
-                        backgroundImage: `
-              linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
-            `,
-                        backgroundSize: '30px 30px'
-                    }}
-                />
+        <div className="flex flex-col lg:flex-row gap-4 w-full">
+            {/* Map Section */}
+            <div className="relative flex-1 min-h-[300px] lg:min-h-[400px] rounded-2xl overflow-hidden shadow-xl">
+                {/* Map Background */}
+                {effectiveMapUrl ? (
+                    <img
+                        src={effectiveMapUrl}
+                        alt="Map showing restaurants"
+                        className="absolute inset-0 w-full h-full object-cover"
+                    />
+                ) : (
+                    // Fallback dark gradient
+                    <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+                        <div
+                            className="absolute inset-0 opacity-20"
+                            style={{
+                                backgroundImage: `
+                  linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+                  linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
+                `,
+                                backgroundSize: '40px 40px'
+                            }}
+                        />
+                    </div>
+                )}
+
+                {/* Overlay gradient for text readability */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30" />
+
+                {/* Status overlay in corner */}
+                <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-sm rounded-lg px-3 py-2 text-white text-sm">
+                    <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${calling > 0 || speaking > 0 ? "bg-red-500 animate-pulse" : "bg-green-500"}`} />
+                        <span className="font-medium">
+                            {calling > 0 && `${calling} calling`}
+                            {speaking > 0 && `${speaking} speaking`}
+                            {calling === 0 && speaking === 0 && `${completed}/${restaurants.length} done`}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Center pulsing indicator */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="relative">
+                        {/* Pulse rings */}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-16 h-16 rounded-full border-2 border-red-500/30 animate-ping" />
+                        </div>
+                        <div className="absolute inset-0 flex items-center justify-center" style={{ animationDelay: '0.5s' }}>
+                            <div className="w-12 h-12 rounded-full border-2 border-red-500/50 animate-ping" />
+                        </div>
+                        {/* Center dot */}
+                        <div className="relative w-6 h-6 bg-red-500 rounded-full shadow-lg shadow-red-500/50 flex items-center justify-center">
+                            <div className="w-2 h-2 bg-white rounded-full" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Legend */}
+                <div className="absolute bottom-4 left-4 right-4 flex justify-center gap-3 text-xs text-white">
+                    <span className="flex items-center gap-1 bg-black/50 backdrop-blur-sm px-2 py-1 rounded">
+                        <span className="w-2 h-2 rounded-full bg-amber-500" /> Calling
+                    </span>
+                    <span className="flex items-center gap-1 bg-black/50 backdrop-blur-sm px-2 py-1 rounded">
+                        <span className="w-2 h-2 rounded-full bg-blue-500" /> Speaking
+                    </span>
+                    <span className="flex items-center gap-1 bg-black/50 backdrop-blur-sm px-2 py-1 rounded">
+                        <span className="w-2 h-2 rounded-full bg-green-500" /> Success
+                    </span>
+                </div>
             </div>
 
-            <svg
-                viewBox="0 0 300 300"
-                className="relative w-full h-full"
-                style={{ filter: "drop-shadow(0 4px 20px rgba(0,0,0,0.3))" }}
-            >
-                <defs>
-                    {/* Animated wave gradient */}
-                    <linearGradient id="waveGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="rgba(239,68,68,0)" />
-                        <stop offset="50%" stopColor="rgba(239,68,68,0.8)" />
-                        <stop offset="100%" stopColor="rgba(239,68,68,0)" />
-                    </linearGradient>
+            {/* Restaurant List Panel */}
+            <div className="w-full lg:w-80 bg-white rounded-2xl shadow-xl overflow-hidden">
+                <div className="bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-3">
+                    <h3 className="font-semibold">Restaurant Status</h3>
+                    <p className="text-sm text-white/80">
+                        {confirmed > 0 ? `${confirmed} hold${confirmed > 1 ? 's' : ''} confirmed!` : `Checking ${restaurants.length} restaurants...`}
+                    </p>
+                </div>
+                <div className="divide-y divide-gray-100 max-h-[350px] overflow-y-auto">
+                    {restaurants.map((r, index) => {
+                        const colors = getStatusColor(r.status, r.outcome)
+                        const isActive = r.status === "calling" || r.status === "speaking"
 
-                    {/* Glow filter */}
-                    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                        <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-                        <feMerge>
-                            <feMergeNode in="coloredBlur" />
-                            <feMergeNode in="SourceGraphic" />
-                        </feMerge>
-                    </filter>
-
-                    {/* Pulse animation */}
-                    <radialGradient id="pulseGradient">
-                        <stop offset="0%" stopColor="rgba(239,68,68,0.6)" />
-                        <stop offset="100%" stopColor="rgba(239,68,68,0)" />
-                    </radialGradient>
-                </defs>
-
-                {/* Connection lines to restaurants */}
-                {restaurantPositions.map((r, i) => {
-                    const isActive = r.status === "calling" || r.status === "speaking"
-                    const color = getStatusColor(r.status, r.outcome)
-
-                    return (
-                        <g key={r.id}>
-                            {/* Base line */}
-                            <line
-                                x1="150"
-                                y1="150"
-                                x2={r.x}
-                                y2={r.y}
-                                stroke={color}
-                                strokeWidth="2"
-                                strokeOpacity={isActive ? 0.6 : 0.2}
-                                strokeDasharray={isActive ? "none" : "4 4"}
-                            />
-
-                            {/* Animated pulse traveling along line */}
-                            {isActive && (
-                                <circle r="4" fill={color} filter="url(#glow)">
-                                    <animateMotion
-                                        dur={r.status === "speaking" ? "1s" : "1.5s"}
-                                        repeatCount="indefinite"
-                                        path={`M150,150 L${r.x},${r.y}`}
-                                    />
-                                </circle>
-                            )}
-                        </g>
-                    )
-                })}
-
-                {/* User location (center) */}
-                <g>
-                    {/* Outer pulse ring */}
-                    <circle cx="150" cy="150" r="20" fill="none" stroke="rgba(239,68,68,0.3)" strokeWidth="2">
-                        <animate
-                            attributeName="r"
-                            from="15"
-                            to="35"
-                            dur="2s"
-                            repeatCount="indefinite"
-                        />
-                        <animate
-                            attributeName="stroke-opacity"
-                            from="0.6"
-                            to="0"
-                            dur="2s"
-                            repeatCount="indefinite"
-                        />
-                    </circle>
-
-                    {/* Inner pulse ring */}
-                    <circle cx="150" cy="150" r="15" fill="none" stroke="rgba(239,68,68,0.5)" strokeWidth="2">
-                        <animate
-                            attributeName="r"
-                            from="12"
-                            to="25"
-                            dur="2s"
-                            begin="0.5s"
-                            repeatCount="indefinite"
-                        />
-                        <animate
-                            attributeName="stroke-opacity"
-                            from="0.8"
-                            to="0"
-                            dur="2s"
-                            begin="0.5s"
-                            repeatCount="indefinite"
-                        />
-                    </circle>
-
-                    {/* Center dot */}
-                    <circle
-                        cx="150"
-                        cy="150"
-                        r="10"
-                        fill="url(#pulseGradient)"
-                        stroke="#ef4444"
-                        strokeWidth="3"
-                        filter="url(#glow)"
-                    />
-                    <circle cx="150" cy="150" r="4" fill="white" />
-
-                    {/* YOU label */}
-                    <text
-                        x="150"
-                        y="175"
-                        textAnchor="middle"
-                        fill="white"
-                        fontSize="10"
-                        fontWeight="bold"
-                        className="uppercase tracking-wider"
-                    >
-                        YOU
-                    </text>
-                </g>
-
-                {/* Restaurant pins */}
-                {restaurantPositions.map((r, i) => {
-                    const color = getStatusColor(r.status, r.outcome)
-                    const icon = getStatusIcon(r.status, r.outcome)
-                    const isActive = r.status === "calling" || r.status === "speaking"
-                    const isSuccess = r.outcome === "hold_confirmed" || r.outcome === "available"
-
-                    return (
-                        <g key={r.id}>
-                            {/* Pulse ring for active calls */}
-                            {isActive && (
-                                <circle cx={r.x} cy={r.y} r="15" fill="none" stroke={color} strokeWidth="2">
-                                    <animate
-                                        attributeName="r"
-                                        from="12"
-                                        to="25"
-                                        dur="1s"
-                                        repeatCount="indefinite"
-                                    />
-                                    <animate
-                                        attributeName="stroke-opacity"
-                                        from="0.8"
-                                        to="0"
-                                        dur="1s"
-                                        repeatCount="indefinite"
-                                    />
-                                </circle>
-                            )}
-
-                            {/* Success celebration effect */}
-                            {isSuccess && (
-                                <>
-                                    <circle cx={r.x} cy={r.y} r="20" fill="none" stroke={color} strokeWidth="2">
-                                        <animate
-                                            attributeName="r"
-                                            from="15"
-                                            to="35"
-                                            dur="1.5s"
-                                            repeatCount="indefinite"
-                                        />
-                                        <animate
-                                            attributeName="stroke-opacity"
-                                            from="0.6"
-                                            to="0"
-                                            dur="1.5s"
-                                            repeatCount="indefinite"
-                                        />
-                                    </circle>
-                                </>
-                            )}
-
-                            {/* Pin circle */}
-                            <circle
-                                cx={r.x}
-                                cy={r.y}
-                                r="14"
-                                fill={color}
-                                stroke="white"
-                                strokeWidth="2"
-                                filter={isActive || isSuccess ? "url(#glow)" : "none"}
-                                className="transition-all duration-300"
-                            />
-
-                            {/* Status icon */}
-                            <text
-                                x={r.x}
-                                y={r.y + 4}
-                                textAnchor="middle"
-                                fill="white"
-                                fontSize="12"
-                                fontWeight="bold"
+                        return (
+                            <div
+                                key={r.id}
+                                className={`px-4 py-3 flex items-center gap-3 transition-colors ${isActive ? "bg-gradient-to-r from-amber-50 to-transparent" :
+                                        r.outcome === "hold_confirmed" ? "bg-gradient-to-r from-green-50 to-transparent" : ""
+                                    }`}
                             >
-                                {icon}
-                            </text>
+                                {/* Status icon */}
+                                <div className={`w-8 h-8 rounded-full ${colors.bg} flex items-center justify-center text-white shrink-0 ${isActive ? "animate-pulse" : ""}`}>
+                                    {getStatusIcon(r.status, r.outcome)}
+                                </div>
 
-                            {/* Restaurant name (truncated) */}
-                            <text
-                                x={r.x}
-                                y={r.y + 28}
-                                textAnchor="middle"
-                                fill="white"
-                                fontSize="8"
-                                className="opacity-80"
-                            >
-                                {r.name.length > 15 ? r.name.slice(0, 12) + "..." : r.name}
-                            </text>
-                        </g>
-                    )
-                })}
-            </svg>
+                                {/* Restaurant info */}
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-gray-900 truncate text-sm">{r.name}</p>
+                                    <p className={`text-xs ${colors.text}`}>
+                                        {getStatusText(r.status, r.outcome)}
+                                    </p>
+                                </div>
 
-            {/* Legend */}
-            <div className="absolute bottom-4 left-4 right-4 flex justify-center gap-4 text-xs text-white/70">
-                <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-amber-500" /> Calling
-                </span>
-                <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-blue-500" /> Speaking
-                </span>
-                <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-green-500" /> Success
-                </span>
+                                {/* Number indicator */}
+                                <div className="text-xs text-gray-400 font-mono">
+                                    #{index + 1}
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
             </div>
         </div>
     )
