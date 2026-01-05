@@ -25,7 +25,7 @@ export default function Home() {
             />
           </Link>
           <Button asChild size="lg" className="bg-red-500 hover:bg-red-600">
-            <Link href="/app">Get Started</Link>
+            <Link href="/app/search">Get Started</Link>
           </Button>
         </div>
       </nav>
