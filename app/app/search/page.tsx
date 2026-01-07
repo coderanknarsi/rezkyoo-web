@@ -165,6 +165,15 @@ export default function SearchPage() {
     )
   }
 
+  // Auto-request location on page load for "near me" default experience
+  React.useEffect(() => {
+    // Only auto-request if location hasn't been set yet
+    if (!location && navigator.geolocation) {
+      handleGetLocation()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Run once on mount
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setLoading(true)

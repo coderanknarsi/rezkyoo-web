@@ -401,13 +401,21 @@ export default function BatchStatusPage() {
               </div>
             )}
 
-            {/* Static Map - show when NOT calling (found state) */}
-            {!isCallsInProgress && mapUrl && (
-              <div className="mb-4 rounded-lg overflow-hidden shadow-sm border">
-                <img
-                  src={mapUrl}
-                  alt="Map showing restaurant locations"
-                  className="w-full h-48 object-cover"
+            {/* Map Widget - show in found state (before calls) */}
+            {!isCallsInProgress && !allCallsComplete && userLocation && items.length > 0 && (
+              <div className="mb-6">
+                <CallMapVisualization
+                  userLat={userLocation.lat}
+                  userLng={userLocation.lng}
+                  mapUrl={mapUrl}
+                  restaurants={items.map(item => ({
+                    id: item.id || item.place_id || item.name || '',
+                    name: item.name || 'Unknown',
+                    lat: item.lat,
+                    lng: item.lng,
+                    status: 'pending' as const,
+                    outcome: undefined,
+                  }))}
                 />
               </div>
             )}
