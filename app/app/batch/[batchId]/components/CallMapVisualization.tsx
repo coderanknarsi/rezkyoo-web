@@ -163,7 +163,7 @@ export function CallMapVisualization({ userLat, userLng, restaurants, mapUrl }: 
                         <span className="w-2 h-2 rounded-full bg-blue-500" /> Speaking
                     </span>
                     <span className="flex items-center gap-1 bg-black/50 backdrop-blur-sm px-2 py-1 rounded">
-                        <span className="w-2 h-2 rounded-full bg-green-500" /> Success
+                        <span className="w-2 h-2 rounded-full bg-blue-400" /> Listening
                     </span>
                 </div>
             </div>
@@ -173,7 +173,7 @@ export function CallMapVisualization({ userLat, userLng, restaurants, mapUrl }: 
                 <div className="bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-3">
                     <h3 className="font-semibold">Restaurant Status</h3>
                     <p className="text-sm text-white/80">
-                        {confirmed > 0 ? `${confirmed} hold${confirmed > 1 ? 's' : ''} confirmed!` : `Checking ${restaurants.length} restaurants...`}
+                        {`Checking ${restaurants.length} restaurants...`}
                     </p>
                 </div>
                 <div className="divide-y divide-gray-100 max-h-[350px] overflow-y-auto">
