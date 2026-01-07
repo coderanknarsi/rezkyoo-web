@@ -1,7 +1,7 @@
 "use client"
 
-import React from "react"
-import { Phone, PhoneCall, Check, X, Clock, MessageSquare } from "lucide-react"
+import React, { useState, useEffect } from "react"
+import { Phone, PhoneCall, Check, X, Clock, MessageSquare, PhoneOff, AlertTriangle } from "lucide-react"
 
 interface Restaurant {
     id: string
@@ -10,7 +10,11 @@ interface Restaurant {
     lng?: number
     // Expanded status types for granular call state visibility
     status: "pending" | "dialing" | "ringing" | "answered" | "calling" | "speaking" | "listening" | "completed" | "error" | "skipped"
-    outcome?: "available" | "unavailable" | "hold_confirmed" | "no_answer" | "voicemail" | "busy" | "unclear"
+    outcome?: "available" | "unavailable" | "hold_confirmed" | "no_answer" | "voicemail" | "busy" | "unclear" | "timeout"
+    // Timer support
+    startedAt?: string | number  // ISO timestamp or epoch ms when call started
+    // Post-call summary
+    summary?: string  // One-liner about the call result
 }
 
 interface CallMapVisualizationProps {
@@ -18,6 +22,42 @@ interface CallMapVisualizationProps {
     userLng: number
     restaurants: Restaurant[]
     mapUrl?: string | null
+}
+
+// Live call timer component
+function CallTimer({ startedAt }: { startedAt?: string | number }) {
+    const [elapsed, setElapsed] = useState(0)
+
+    useEffect(() => {
+        if (!startedAt) return
+
+        const startMs = typeof startedAt === 'string' ? new Date(startedAt).getTime() : startedAt
+
+        const updateTimer = () => {
+            const now = Date.now()
+            setElapsed(Math.floor((now - startMs) / 1000))
+        }
+
+        updateTimer() // Initial update
+        const interval = setInterval(updateTimer, 1000)
+
+        return () => clearInterval(interval)
+    }, [startedAt])
+
+    if (!startedAt || elapsed === 0) return null
+
+    const minutes = Math.floor(elapsed / 60)
+    const seconds = elapsed % 60
+    const display = `${minutes}:${seconds.toString().padStart(2, '0')}`
+
+    // Warning color if call is running long (> 60s)
+    const isLong = elapsed > 60
+
+    return (
+        <span className={`text-xs font-mono ${isLong ? 'text-amber-600' : 'text-gray-500'}`}>
+            {display}
+        </span>
+    )
 }
 
 // Get status-based colors
@@ -71,6 +111,7 @@ function getStatusText(status: string, outcome?: string): string {
     if (outcome === "voicemail") return "Reached Voicemail"
     if (outcome === "busy") return "Line Busy"
     if (outcome === "unclear") return "Response Unclear"
+    if (outcome === "timeout") return "Call Timed Out"
 
     // Granular call states - narrate what's happening
     if (status === "dialing") return "Dialing..."
@@ -184,27 +225,40 @@ export function CallMapVisualization({ userLat, userLng, restaurants, mapUrl }: 
                         return (
                             <div
                                 key={r.id}
-                                className={`px-4 py-3 flex items-center gap-3 transition-colors ${isActive ? "bg-gradient-to-r from-amber-50 to-transparent" :
+                                className={`px-4 py-3 transition-colors ${isActive ? "bg-gradient-to-r from-amber-50 to-transparent" :
                                     r.outcome === "hold_confirmed" ? "bg-gradient-to-r from-green-50 to-transparent" : ""
                                     }`}
                             >
-                                {/* Status icon */}
-                                <div className={`w-8 h-8 rounded-full ${colors.bg} flex items-center justify-center text-white shrink-0 ${isActive ? "animate-pulse" : ""}`}>
-                                    {getStatusIcon(r.status, r.outcome)}
+                                <div className="flex items-center gap-3">
+                                    {/* Status icon */}
+                                    <div className={`w-8 h-8 rounded-full ${colors.bg} flex items-center justify-center text-white shrink-0 ${isActive ? "animate-pulse" : ""}`}>
+                                        {getStatusIcon(r.status, r.outcome)}
+                                    </div>
+
+                                    {/* Restaurant info */}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-medium text-gray-900 truncate text-sm">{r.name}</p>
+                                        <p className={`text-xs ${colors.text}`}>
+                                            {getStatusText(r.status, r.outcome)}
+                                        </p>
+                                    </div>
+
+                                    {/* Timer for active calls, number for others */}
+                                    <div className="text-xs text-gray-400 font-mono shrink-0">
+                                        {isActive && r.startedAt ? (
+                                            <CallTimer startedAt={r.startedAt} />
+                                        ) : (
+                                            `#${index + 1}`
+                                        )}
+                                    </div>
                                 </div>
 
-                                {/* Restaurant info */}
-                                <div className="flex-1 min-w-0">
-                                    <p className="font-medium text-gray-900 truncate text-sm">{r.name}</p>
-                                    <p className={`text-xs ${colors.text}`}>
-                                        {getStatusText(r.status, r.outcome)}
+                                {/* Post-call summary (shows after call completes) */}
+                                {r.status === "completed" && r.summary && (
+                                    <p className="mt-1 ml-11 text-xs text-gray-500 italic truncate">
+                                        &quot;{r.summary}&quot;
                                     </p>
-                                </div>
-
-                                {/* Number indicator */}
-                                <div className="text-xs text-gray-400 font-mono">
-                                    #{index + 1}
-                                </div>
+                                )}
                             </div>
                         )
                     })}
