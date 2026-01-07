@@ -213,11 +213,13 @@ export default function BatchStatusPage() {
       if (data?.query) {
         setQuery(data.query)
       }
-      // Extract user location from first restaurant's relative position or query
-      if (data?.user_location) {
+      // Extract user location from map_center first (most accurate)
+      if (data?.map_center?.lat && data?.map_center?.lng) {
+        setUserLocation({ lat: data.map_center.lat, lng: data.map_center.lng })
+      } else if (data?.user_location) {
         setUserLocation(data.user_location)
       } else if (Array.isArray(data?.items) && data.items.length > 0 && data.items[0].lat) {
-        // Estimate user location from restaurant positions (center of all)
+        // Fallback: Estimate user location from restaurant positions (center of all)
         const lats = data.items.filter((i: any) => i.lat).map((i: any) => i.lat)
         const lngs = data.items.filter((i: any) => i.lng).map((i: any) => i.lng)
         if (lats.length > 0) {

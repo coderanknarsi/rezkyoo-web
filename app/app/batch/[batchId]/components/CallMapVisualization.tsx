@@ -8,8 +8,9 @@ interface Restaurant {
     name: string
     lat?: number
     lng?: number
-    status: "pending" | "calling" | "speaking" | "completed" | "error" | "skipped"
-    outcome?: "available" | "unavailable" | "hold_confirmed" | "no_answer" | "voicemail"
+    // Expanded status types for granular call state visibility
+    status: "pending" | "dialing" | "ringing" | "answered" | "calling" | "speaking" | "listening" | "completed" | "error" | "skipped"
+    outcome?: "available" | "unavailable" | "hold_confirmed" | "no_answer" | "voicemail" | "busy" | "unclear"
 }
 
 interface CallMapVisualizationProps {
@@ -21,38 +22,69 @@ interface CallMapVisualizationProps {
 
 // Get status-based colors
 function getStatusColor(status: string, outcome?: string): { bg: string; text: string; ring: string } {
+    // Outcomes first (terminal states)
     if (outcome === "hold_confirmed") return { bg: "bg-green-500", text: "text-green-600", ring: "ring-green-400" }
     if (outcome === "available") return { bg: "bg-green-500", text: "text-green-600", ring: "ring-green-400" }
-    if (outcome === "unavailable" || outcome === "no_answer" || outcome === "voicemail") return { bg: "bg-red-500", text: "text-red-600", ring: "ring-red-400" }
-    if (status === "speaking") return { bg: "bg-blue-500", text: "text-blue-600", ring: "ring-blue-400" }
-    if (status === "calling") return { bg: "bg-amber-500", text: "text-amber-600", ring: "ring-amber-400" }
+    if (outcome === "unavailable" || outcome === "no_answer" || outcome === "voicemail" || outcome === "busy") return { bg: "bg-red-500", text: "text-red-600", ring: "ring-red-400" }
+    if (outcome === "unclear") return { bg: "bg-yellow-500", text: "text-yellow-600", ring: "ring-yellow-400" }
+
+    // Active call states
+    if (status === "speaking" || status === "listening") return { bg: "bg-blue-500", text: "text-blue-600", ring: "ring-blue-400" }
+    if (status === "answered") return { bg: "bg-blue-400", text: "text-blue-600", ring: "ring-blue-300" }
+    if (status === "calling" || status === "dialing" || status === "ringing") return { bg: "bg-amber-500", text: "text-amber-600", ring: "ring-amber-400" }
+
+    // Terminal/error states
     if (status === "completed") return { bg: "bg-gray-400", text: "text-gray-600", ring: "ring-gray-300" }
     if (status === "error" || status === "skipped") return { bg: "bg-red-500", text: "text-red-600", ring: "ring-red-400" }
+
     return { bg: "bg-gray-300", text: "text-gray-500", ring: "ring-gray-200" }
 }
 
 // Get status icon component
 function getStatusIcon(status: string, outcome?: string) {
+    // Outcomes
     if (outcome === "hold_confirmed" || outcome === "available") return <Check className="w-4 h-4" />
-    if (outcome === "unavailable" || outcome === "no_answer" || outcome === "voicemail") return <X className="w-4 h-4" />
-    if (status === "speaking") return <MessageSquare className="w-4 h-4" />
-    if (status === "calling") return <PhoneCall className="w-4 h-4 animate-pulse" />
+    if (outcome === "unavailable" || outcome === "no_answer" || outcome === "voicemail" || outcome === "busy") return <X className="w-4 h-4" />
+    if (outcome === "unclear") return <MessageSquare className="w-4 h-4" />
+
+    // Active states
+    if (status === "speaking") return <MessageSquare className="w-4 h-4 animate-pulse" />
+    if (status === "listening") return <MessageSquare className="w-4 h-4" />
+    if (status === "answered") return <Phone className="w-4 h-4" />
+    if (status === "calling" || status === "dialing") return <PhoneCall className="w-4 h-4 animate-pulse" />
+    if (status === "ringing") return <Phone className="w-4 h-4 animate-bounce" />
+
+    // Terminal
     if (status === "error" || status === "skipped") return <X className="w-4 h-4" />
+    if (status === "completed") return <Check className="w-4 h-4" />
+
     return <Clock className="w-4 h-4" />
 }
 
-// Get status text
+// Get status text - USER-FRIENDLY descriptions of what's happening
 function getStatusText(status: string, outcome?: string): string {
+    // Outcomes first (these override status)
     if (outcome === "hold_confirmed") return "Hold Confirmed! 🎉"
-    if (outcome === "available") return "Available"
+    if (outcome === "available") return "Table Available!"
     if (outcome === "unavailable") return "Not Available"
     if (outcome === "no_answer") return "No Answer"
-    if (outcome === "voicemail") return "Voicemail"
-    if (status === "speaking") return "Speaking..."
-    if (status === "calling") return "Calling..."
-    if (status === "completed") return "Completed"
-    if (status === "error") return "Error"
+    if (outcome === "voicemail") return "Reached Voicemail"
+    if (outcome === "busy") return "Line Busy"
+    if (outcome === "unclear") return "Response Unclear"
+
+    // Granular call states - narrate what's happening
+    if (status === "dialing") return "Dialing..."
+    if (status === "ringing") return "Ringing..."
+    if (status === "answered") return "Restaurant answered!"
+    if (status === "speaking") return "Speaking with host..."
+    if (status === "listening") return "Waiting for response..."
+    if (status === "calling") return "Calling..."  // Fallback for legacy
+
+    // Terminal states
+    if (status === "completed") return "Call Complete"
+    if (status === "error") return "Call Failed"
     if (status === "skipped") return "Skipped"
+
     return "Waiting..."
 }
 
