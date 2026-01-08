@@ -44,6 +44,7 @@ type BatchItem = {
   distance_miles?: number
   lat?: number
   lng?: number
+  startedAt?: number  // Epoch ms when call started
 }
 
 function getStatusIcon(status?: CallStatus) {
@@ -204,7 +205,8 @@ export default function BatchStatusPage() {
       if (Array.isArray(data?.items)) {
         setItems(data.items)
       }
-      if (data?.paywall_required) {
+      // FIX: Only show paywall AFTER batch is completed, never mid-flight
+      if (data?.paywall_required && data?.status === "completed") {
         setPaywallRequired(true)
       }
       if (data?.map_url) {
@@ -398,6 +400,7 @@ export default function BatchStatusPage() {
                     lng: item.lng,
                     status: (item.status as any) || 'pending',
                     outcome: item.result?.outcome as any,
+                    startedAt: item.startedAt,
                   }))}
                 />
               </div>
@@ -461,41 +464,68 @@ export default function BatchStatusPage() {
           </CardContent>
         </Card>
 
-        {/* Check Availability Button - NOW SHOWN AT TOP for less scrolling */}
-        {isFoundState && items.length > 0 && (
-          <Card className="border-0 shadow-lg bg-gradient-to-r from-red-500 to-red-600">
+        {/* Action Button - Changes based on state */}
+        {items.length > 0 && (
+          <Card className={`border-0 shadow-lg ${isCallsInProgress ? "bg-gradient-to-r from-amber-500 to-orange-500" :
+            allCallsComplete ? "bg-gradient-to-r from-emerald-500 to-teal-500" :
+              "bg-gradient-to-r from-red-500 to-red-600"
+            }`}>
             <CardContent className="p-4">
-              <Button
-                onClick={handleCheckAvailability}
-                disabled={isStartingCalls || authLoading}
-                className="w-full h-14 text-lg font-semibold bg-white text-red-700 hover:bg-white/90 shadow-lg"
-              >
-                {isStartingCalls ? (
-                  <>
-                    <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
-                    Starting Calls...
-                  </>
-                ) : authLoading ? (
-                  <>
-                    <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
-                    Loading...
-                  </>
-                ) : user ? (
-                  <>
-                    <Phone className="h-5 w-5 mr-2" />
-                    Check Availability at {items.length} Restaurant{items.length > 1 ? "s" : ""}
-                  </>
-                ) : (
-                  <>
-                    <Lock className="h-5 w-5 mr-2" />
-                    Sign Up to Check Availability
-                  </>
-                )}
-              </Button>
-              {!user && !authLoading && (
-                <p className="text-center text-white/80 text-sm mt-2">
-                  Free to create an account • Only pay when you book
-                </p>
+              {/* STATE: Calls In Progress - Show disabled "In Progress" */}
+              {isCallsInProgress && (
+                <div className="w-full h-14 flex items-center justify-center text-lg font-semibold bg-white/90 text-amber-700 rounded-md shadow-lg">
+                  <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
+                  Calling Restaurants... ({completedItems}/{totalItems})
+                </div>
+              )}
+
+              {/* STATE: All Calls Complete - Show "View Results" */}
+              {allCallsComplete && (
+                <Button
+                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                  className="w-full h-14 text-lg font-semibold bg-white text-emerald-700 hover:bg-white/90 shadow-lg"
+                >
+                  <Check className="h-5 w-5 mr-2" />
+                  View Results ({available} Available)
+                </Button>
+              )}
+
+              {/* STATE: Found (not started) - Show "Check Availability" */}
+              {isFoundState && (
+                <>
+                  <Button
+                    onClick={handleCheckAvailability}
+                    disabled={isStartingCalls || authLoading}
+                    className="w-full h-14 text-lg font-semibold bg-white text-red-700 hover:bg-white/90 shadow-lg"
+                  >
+                    {isStartingCalls ? (
+                      <>
+                        <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
+                        Starting Calls...
+                      </>
+                    ) : authLoading ? (
+                      <>
+                        <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
+                        Loading...
+                      </>
+                    ) : user ? (
+                      <>
+                        <Phone className="h-5 w-5 mr-2" />
+                        Check Availability at {items.length} Restaurant{items.length > 1 ? "s" : ""}
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="h-5 w-5 mr-2" />
+                        Sign Up to Check Availability
+                      </>
+                    )}
+                  </Button>
+                  {!user && !authLoading && (
+                    <p className="text-center text-white/80 text-sm mt-2">
+                      Free to create an account • Only pay when you book
+                    </p>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>

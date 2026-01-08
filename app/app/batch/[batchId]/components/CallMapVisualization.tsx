@@ -131,10 +131,17 @@ function getStatusText(status: string, outcome?: string): string {
 
 export function CallMapVisualization({ userLat, userLng, restaurants, mapUrl }: CallMapVisualizationProps) {
     // Count statuses
-    const calling = restaurants.filter(r => r.status === "calling").length
-    const speaking = restaurants.filter(r => r.status === "speaking").length
+    const calling = restaurants.filter(r => r.status === "calling" || r.status === "dialing" || r.status === "ringing").length
+    const speaking = restaurants.filter(r => r.status === "speaking" || r.status === "listening" || r.status === "answered").length
     const completed = restaurants.filter(r => r.status === "completed" || r.status === "error" || r.status === "skipped").length
     const confirmed = restaurants.filter(r => r.outcome === "hold_confirmed").length
+
+    // Find the currently active restaurant (prioritize speaking, then calling)
+    const activeRestaurant = restaurants.find(r =>
+        r.status === "speaking" || r.status === "listening" || r.status === "answered"
+    ) || restaurants.find(r =>
+        r.status === "calling" || r.status === "dialing" || r.status === "ringing"
+    )
 
     return (
         <div className="flex flex-col lg:flex-row gap-4 w-full">
@@ -166,15 +173,32 @@ export function CallMapVisualization({ userLat, userLng, restaurants, mapUrl }: 
                 {/* Overlay gradient for text readability */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30" />
 
-                {/* Status overlay in corner */}
-                <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-sm rounded-lg px-3 py-2 text-white text-sm">
-                    <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${calling > 0 || speaking > 0 ? "bg-red-500 animate-pulse" : "bg-green-500"}`} />
-                        <span className="font-medium">
-                            {calling > 0 && `${calling} calling`}
-                            {speaking > 0 && `${speaking} speaking`}
-                            {calling === 0 && speaking === 0 && `${completed}/${restaurants.length} done`}
-                        </span>
+                {/* Status overlay - shows active call prominently */}
+                <div className="absolute top-4 left-4 right-4 flex flex-col gap-2">
+                    {/* Active call highlight */}
+                    {activeRestaurant && (
+                        <div className="bg-black/80 backdrop-blur-sm rounded-lg px-4 py-3 text-white">
+                            <div className="flex items-center gap-2 text-xs text-white/70 mb-1">
+                                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                                <span>Currently {activeRestaurant.status === "speaking" || activeRestaurant.status === "listening" ? "talking to" : "calling"}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="font-semibold text-sm truncate max-w-[200px]">{activeRestaurant.name}</span>
+                                {activeRestaurant.startedAt && (
+                                    <CallTimer startedAt={activeRestaurant.startedAt} />
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Progress counter */}
+                    <div className="bg-black/70 backdrop-blur-sm rounded-lg px-3 py-2 text-white text-sm self-start">
+                        <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${calling > 0 || speaking > 0 ? "bg-amber-500 animate-pulse" : "bg-green-500"}`} />
+                            <span className="font-medium">
+                                {completed}/{restaurants.length} done
+                            </span>
+                        </div>
                     </div>
                 </div>
 
