@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog"
 import { useAuth } from "@/lib/auth-context"
 import { CallMapVisualization } from "./components/CallMapVisualization"
+import { DynamicCallMap } from "./components/DynamicCallMap"
 
 const POLL_INTERVAL_MS = 5000 // 5 seconds during active calls
 
@@ -430,26 +431,31 @@ export default function BatchStatusPage() {
             )}
           </CardHeader>
           <CardContent>
-            {/* Animated Call Map - show during calls */}
-            {isCalling && userLocation && items.length > 0 && (
-              <div className="mb-6">
-                <CallMapVisualization
-                  userLat={userLocation.lat}
-                  userLng={userLocation.lng}
-                  mapUrl={mapUrl}
-                  isPaid={false} // Always process-only during calls
-                  restaurants={items.map(item => ({
-                    id: item.id || item.place_id || item.name || '',
-                    name: item.name || 'Unknown',
-                    lat: item.lat,
-                    lng: item.lng,
-                    status: (item.status as any) || 'pending',
-                    outcome: item.result?.outcome as any,
-                    startedAt: item.startedAt,
-                  }))}
-                />
-              </div>
-            )}
+            {/* DYNAMIC MAP - show during calls (lazy-loaded) */}
+            {isCalling && userLocation && items.length > 0 && (() => {
+              // Find active restaurant for highlight
+              const activeItem = items.find(i =>
+                i.status === "calling" || i.status === "speaking"
+              )
+              const activeRestaurantId = activeItem?.id || activeItem?.place_id || null
+
+              return (
+                <div className="mb-6">
+                  <DynamicCallMap
+                    renderPhase="process"
+                    center={userLocation}
+                    userLocation={userLocation}
+                    activeRestaurantId={activeRestaurantId}
+                    restaurants={items.filter(item => item.lat && item.lng).map(item => ({
+                      id: item.id || item.place_id || item.name || '',
+                      name: item.name || 'Unknown',
+                      lat: item.lat!,
+                      lng: item.lng!,
+                    }))}
+                  />
+                </div>
+              )
+            })()}
 
             {/* Map Widget - show in found state (before calls) */}
             {!isCalling && !isCompleted && userLocation && items.length > 0 && (
