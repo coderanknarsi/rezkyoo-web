@@ -360,11 +360,43 @@ export default function SearchPage() {
                   className="flex h-12 w-full rounded-md border border-zinc-200 bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
                 >
                   <option value="">Select a time</option>
-                  {availableTimeOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
+                  {/* Popular times first */}
+                  <optgroup label="Popular Dinner Times">
+                    {availableTimeOptions
+                      .filter(opt => ['18:00', '18:30', '19:00', '19:30', '20:00'].includes(opt.value))
+                      .map((opt) => (
+                        <option key={`pop-${opt.value}`} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                  </optgroup>
+                  <optgroup label="Morning (Before 12 PM)">
+                    {availableTimeOptions
+                      .filter(opt => opt.value < '12:00')
+                      .map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                  </optgroup>
+                  <optgroup label="Afternoon (12 PM - 5 PM)">
+                    {availableTimeOptions
+                      .filter(opt => opt.value >= '12:00' && opt.value < '17:00')
+                      .map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                  </optgroup>
+                  <optgroup label="Evening (After 5 PM)">
+                    {availableTimeOptions
+                      .filter(opt => opt.value >= '17:00')
+                      .map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                  </optgroup>
                 </select>
                 {date === getTodayDate() && availableTimeOptions.length < ALL_TIME_OPTIONS.length && (
                   <p className="text-xs text-muted-foreground">

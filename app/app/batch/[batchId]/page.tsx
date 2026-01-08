@@ -318,9 +318,53 @@ export default function BatchStatusPage() {
     i.result?.outcome === "available" || i.result?.outcome === "hold_confirmed"
   ).length
 
-  const isCallsInProgress = status === "calling" || status === "running" || callingItems > 0 || speakingItems > 0
-  const allCallsComplete = totalItems > 0 && completedItems === totalItems && status === "completed"
-  const isFoundState = status === "found"
+  // === MONOTONIC STAGE FUNCTION ===
+  // Stage can only advance: searching → ready → calling → completed
+  // This prevents contradictory UI states
+  type UIStage = "searching" | "ready" | "calling" | "completed"
+
+  const computeStage = (): UIStage => {
+    // Stage 4: Completed (terminal - once true, always true)
+    if (status === "completed") return "completed"
+
+    // Stage 3: Calling (any call has started or is in progress)
+    if (
+      status === "calling" ||
+      status === "running" ||
+      callingItems > 0 ||
+      speakingItems > 0 ||
+      (completedItems > 0 && completedItems < totalItems) // Some done but not all
+    ) return "calling"
+
+    // Stage 2: Ready (restaurants found, waiting to start calls)
+    if (status === "found" && totalItems > 0) return "ready"
+
+    // Stage 1: Searching (default/loading)
+    return "searching"
+  }
+
+  // Store previous stage to prevent regression
+  const prevStageRef = React.useRef<UIStage>("searching")
+  const currentStage = computeStage()
+
+  // Monotonic: only allow stage to advance, never regress
+  const stageOrder: Record<UIStage, number> = { searching: 0, ready: 1, calling: 2, completed: 3 }
+  const stage: UIStage = stageOrder[currentStage] >= stageOrder[prevStageRef.current]
+    ? currentStage
+    : prevStageRef.current
+
+  // Update ref for next render
+  React.useEffect(() => {
+    if (stageOrder[stage] > stageOrder[prevStageRef.current]) {
+      prevStageRef.current = stage
+    }
+  }, [stage])
+
+  // Derived booleans from stage (simple and unambiguous)
+  const isSearching = stage === "searching"
+  const isReady = stage === "ready"
+  const isCalling = stage === "calling"
+  const isCompleted = stage === "completed"
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-red-50/30 via-white to-white dark:from-zinc-900 dark:via-zinc-950 dark:to-zinc-950 relative overflow-hidden">
@@ -335,17 +379,17 @@ export default function BatchStatusPage() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-2xl font-bold">
-                  {isFoundState ? "Restaurants Found!" :
-                    isCallsInProgress ? "Checking Availability..." :
-                      allCallsComplete ? "Results" : "Finding Restaurants..."}
+                  {isReady ? "Restaurants Found!" :
+                    isCalling ? "Checking Availability..." :
+                      isCompleted ? "Results" : "Finding Restaurants..."}
                 </CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {isFoundState && `${items.length} restaurants match your search`}
-                  {isCallsInProgress && `${callingItems} calling, ${pendingItems} queued`}
-                  {allCallsComplete && `${available} available out of ${totalItems} called`}
+                  {isReady && `${items.length} restaurants match your search`}
+                  {isCalling && `${callingItems} calling, ${pendingItems} queued`}
+                  {isCompleted && `${available} available out of ${totalItems} called`}
                 </p>
               </div>
-              {isCallsInProgress && (
+              {isCalling && (
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-100 text-red-700">
                   <RefreshCw className="h-4 w-4 animate-spin" />
                   <span className="text-sm font-medium">Live</span>
@@ -387,7 +431,7 @@ export default function BatchStatusPage() {
           </CardHeader>
           <CardContent>
             {/* Animated Call Map - show during calls */}
-            {isCallsInProgress && userLocation && items.length > 0 && (
+            {isCalling && userLocation && items.length > 0 && (
               <div className="mb-6">
                 <CallMapVisualization
                   userLat={userLocation.lat}
@@ -407,7 +451,7 @@ export default function BatchStatusPage() {
             )}
 
             {/* Map Widget - show in found state (before calls) */}
-            {!isCallsInProgress && !allCallsComplete && userLocation && items.length > 0 && (
+            {!isCalling && !isCompleted && userLocation && items.length > 0 && (
               <div className="mb-6">
                 <CallMapVisualization
                   userLat={userLocation.lat}
@@ -425,7 +469,7 @@ export default function BatchStatusPage() {
               </div>
             )}
             {/* Progress bar - only during calls */}
-            {(isCallsInProgress || allCallsComplete) && totalItems > 0 && (
+            {(isCalling || isCompleted) && totalItems > 0 && (
               <div className="mb-4">
                 <div className="flex justify-between text-sm text-muted-foreground mb-2">
                   <span>{completedItems} of {totalItems} calls completed</span>
@@ -437,7 +481,7 @@ export default function BatchStatusPage() {
                 </div>
                 <div className="h-3 bg-zinc-200 rounded-full overflow-hidden">
                   <div
-                    className={`h-full bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 transition-all duration-500 ${isCallsInProgress ? "animate-pulse" : ""}`}
+                    className={`h-full bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 transition-all duration-500 ${isCalling ? "animate-pulse" : ""}`}
                     style={{ width: `${(completedItems / totalItems) * 100}%` }}
                   />
                 </div>
@@ -445,7 +489,7 @@ export default function BatchStatusPage() {
             )}
 
             {/* Stats when complete */}
-            {allCallsComplete && (
+            {isCompleted && (
               <div className="grid grid-cols-3 gap-4 text-center mt-4">
                 <div className="rounded-xl bg-gradient-to-br from-zinc-100 to-zinc-50 p-4 shadow-sm">
                   <div className="text-3xl font-bold">{totalItems}</div>
@@ -466,13 +510,13 @@ export default function BatchStatusPage() {
 
         {/* Action Button - Changes based on state */}
         {items.length > 0 && (
-          <Card className={`border-0 shadow-lg ${isCallsInProgress ? "bg-gradient-to-r from-amber-500 to-orange-500" :
-            allCallsComplete ? "bg-gradient-to-r from-emerald-500 to-teal-500" :
+          <Card className={`border-0 shadow-lg ${isCalling ? "bg-gradient-to-r from-amber-500 to-orange-500" :
+            isCompleted ? "bg-gradient-to-r from-emerald-500 to-teal-500" :
               "bg-gradient-to-r from-red-500 to-red-600"
             }`}>
             <CardContent className="p-4">
               {/* STATE: Calls In Progress - Show disabled "In Progress" */}
-              {isCallsInProgress && (
+              {isCalling && (
                 <div className="w-full h-14 flex items-center justify-center text-lg font-semibold bg-white/90 text-amber-700 rounded-md shadow-lg">
                   <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
                   Calling Restaurants... ({completedItems}/{totalItems})
@@ -480,7 +524,7 @@ export default function BatchStatusPage() {
               )}
 
               {/* STATE: All Calls Complete - Show "View Results" */}
-              {allCallsComplete && (
+              {isCompleted && (
                 <Button
                   onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                   className="w-full h-14 text-lg font-semibold bg-white text-emerald-700 hover:bg-white/90 shadow-lg"
@@ -491,7 +535,7 @@ export default function BatchStatusPage() {
               )}
 
               {/* STATE: Found (not started) - Show "Check Availability" */}
-              {isFoundState && (
+              {isReady && (
                 <>
                   <Button
                     onClick={handleCheckAvailability}
@@ -541,7 +585,7 @@ export default function BatchStatusPage() {
         )}
 
         {/* Restaurant list - hidden during calls to reduce clutter */}
-        {!isCallsInProgress && (
+        {!isCalling && (
           <div className="grid gap-4">
             {items.length === 0 ? (
               <Card className="border-0 shadow-md">
@@ -562,7 +606,7 @@ export default function BatchStatusPage() {
               items.map((item) => {
                 const displayId = item.place_id ?? item.id ?? "unknown"
                 const callStatus = item.status as CallStatus | undefined
-                const showCallStatus = !isFoundState // Only show call status after calls started
+                const showCallStatus = !isReady // Only show call status after calls started
 
                 return (
                   <Card
