@@ -22,6 +22,10 @@ interface CallMapVisualizationProps {
     userLng: number
     restaurants: Restaurant[]
     mapUrl?: string | null
+    // PAYWALL BOUNDARY: Controls visibility of outcomes
+    // Pre-paywall (isPaid=false): Only process states (Queued, Calling)
+    // Post-paywall (isPaid=true): Reveal outcomes (Success, No Luck)
+    isPaid?: boolean
 }
 
 // Live call timer component
@@ -144,12 +148,17 @@ function getStatusText(status: string, outcome?: string): string {
     return "Queued"
 }
 
-export function CallMapVisualization({ userLat, userLng, restaurants, mapUrl }: CallMapVisualizationProps) {
+export function CallMapVisualization({ userLat, userLng, restaurants, mapUrl, isPaid = false }: CallMapVisualizationProps) {
     // Count statuses
     const calling = restaurants.filter(r => r.status === "calling" || r.status === "dialing" || r.status === "ringing").length
     const speaking = restaurants.filter(r => r.status === "speaking" || r.status === "listening" || r.status === "answered").length
     const completed = restaurants.filter(r => r.status === "completed" || r.status === "error" || r.status === "skipped").length
     const confirmed = restaurants.filter(r => r.outcome === "hold_confirmed").length
+
+    // PAYWALL BOUNDARY: Check if any restaurant has outcome data
+    const hasAnyOutcome = restaurants.some(r => r.outcome !== undefined)
+    // Only show outcome-related UI if isPaid is true
+    const showOutcomes = isPaid && hasAnyOutcome
 
     // Find the currently active restaurant (prioritize speaking, then calling)
     const activeRestaurant = restaurants.find(r =>
@@ -234,22 +243,39 @@ export function CallMapVisualization({ userLat, userLng, restaurants, mapUrl }: 
                     </div>
                 </div>
 
-                {/* Legend - 3 simple buckets + timeout info */}
+                {/* PAYWALL BOUNDARY: Legend/narration area */}
                 <div className="absolute bottom-4 left-4 right-4">
-                    <div className="flex justify-center gap-3 text-xs text-white mb-2">
-                        <span className="flex items-center gap-1 bg-black/50 backdrop-blur-sm px-2 py-1 rounded">
-                            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /> In Progress
-                        </span>
-                        <span className="flex items-center gap-1 bg-black/50 backdrop-blur-sm px-2 py-1 rounded">
-                            <span className="w-2 h-2 rounded-full bg-green-500" /> Success
-                        </span>
-                        <span className="flex items-center gap-1 bg-black/50 backdrop-blur-sm px-2 py-1 rounded">
-                            <span className="w-2 h-2 rounded-full bg-gray-400" /> No Luck
-                        </span>
-                    </div>
-                    <p className="text-center text-[10px] text-white/60">
-                        We&apos;ll hang up after ~90s if no response
-                    </p>
+                    {showOutcomes ? (
+                        // POST-PAYWALL: Show outcome legend
+                        <div className="flex justify-center gap-3 text-xs text-white mb-2">
+                            <span className="flex items-center gap-1 bg-black/50 backdrop-blur-sm px-2 py-1 rounded">
+                                <span className="w-2 h-2 rounded-full bg-amber-500" /> In Progress
+                            </span>
+                            <span className="flex items-center gap-1 bg-black/50 backdrop-blur-sm px-2 py-1 rounded">
+                                <span className="w-2 h-2 rounded-full bg-green-500" /> Success
+                            </span>
+                            <span className="flex items-center gap-1 bg-black/50 backdrop-blur-sm px-2 py-1 rounded">
+                                <span className="w-2 h-2 rounded-full bg-gray-400" /> No Luck
+                            </span>
+                        </div>
+                    ) : (
+                        // PRE-PAYWALL: Show process narration only
+                        <div className="bg-black/60 backdrop-blur-sm rounded-lg px-4 py-2 text-center">
+                            {activeRestaurant ? (
+                                <p className="text-white text-sm">
+                                    Calling restaurants one at a time...
+                                </p>
+                            ) : completed > 0 ? (
+                                <p className="text-white text-sm">
+                                    Calls complete. Results shown after checkout.
+                                </p>
+                            ) : (
+                                <p className="text-white/70 text-xs">
+                                    Tap "Check Availability" to start calling
+                                </p>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -263,27 +289,37 @@ export function CallMapVisualization({ userLat, userLng, restaurants, mapUrl }: 
                 </div>
                 <div className="divide-y divide-gray-100 max-h-[350px] overflow-y-auto">
                     {restaurants.map((r, index) => {
-                        const colors = getStatusColor(r.status, r.outcome)
-                        const isActive = r.status === "calling" || r.status === "speaking"
+                        // PAYWALL BOUNDARY: Hide outcome colors pre-paywall
+                        const colors = showOutcomes
+                            ? getStatusColor(r.status, r.outcome)
+                            : getStatusColor(r.status, undefined) // No outcome = process colors only
+                        const isActive = r.status === "calling" || r.status === "speaking" ||
+                            r.status === "dialing" || r.status === "ringing" ||
+                            r.status === "listening" || r.status === "answered"
 
                         return (
                             <div
                                 key={r.id}
                                 className={`px-4 py-3 transition-colors ${isActive ? "bg-gradient-to-r from-amber-50 to-transparent" :
-                                    r.outcome === "hold_confirmed" ? "bg-gradient-to-r from-green-50 to-transparent" : ""
+                                    // Only show success highlight post-paywall
+                                    (showOutcomes && r.outcome === "hold_confirmed") ? "bg-gradient-to-r from-green-50 to-transparent" : ""
                                     }`}
                             >
                                 <div className="flex items-center gap-3">
                                     {/* Status icon */}
                                     <div className={`w-8 h-8 rounded-full ${colors.bg} flex items-center justify-center text-white shrink-0 ${isActive ? "animate-pulse" : ""}`}>
-                                        {getStatusIcon(r.status, r.outcome)}
+                                        {showOutcomes ? getStatusIcon(r.status, r.outcome) : getStatusIcon(r.status, undefined)}
                                     </div>
 
                                     {/* Restaurant info */}
                                     <div className="flex-1 min-w-0">
                                         <p className="font-medium text-gray-900 truncate text-sm">{r.name}</p>
                                         <p className={`text-xs ${colors.text}`}>
-                                            {getStatusText(r.status, r.outcome)}
+                                            {/* PAYWALL BOUNDARY: Hide outcome text pre-paywall */}
+                                            {showOutcomes
+                                                ? getStatusText(r.status, r.outcome)
+                                                : getStatusText(r.status, undefined) // Process state only
+                                            }
                                         </p>
                                     </div>
 

@@ -437,6 +437,7 @@ export default function BatchStatusPage() {
                   userLat={userLocation.lat}
                   userLng={userLocation.lng}
                   mapUrl={mapUrl}
+                  isPaid={false} // Always process-only during calls
                   restaurants={items.map(item => ({
                     id: item.id || item.place_id || item.name || '',
                     name: item.name || 'Unknown',
@@ -457,6 +458,7 @@ export default function BatchStatusPage() {
                   userLat={userLocation.lat}
                   userLng={userLocation.lng}
                   mapUrl={mapUrl}
+                  isPaid={false} // Always process-only before calls start
                   restaurants={items.map(item => ({
                     id: item.id || item.place_id || item.name || '',
                     name: item.name || 'Unknown',
