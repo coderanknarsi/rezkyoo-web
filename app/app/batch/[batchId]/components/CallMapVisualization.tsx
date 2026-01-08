@@ -60,24 +60,33 @@ function CallTimer({ startedAt }: { startedAt?: string | number }) {
     )
 }
 
-// Get status-based colors
+// Get status-based colors - 3 BUCKETS matching legend
 function getStatusColor(status: string, outcome?: string): { bg: string; text: string; ring: string } {
-    // Outcomes first (terminal states)
-    if (outcome === "hold_confirmed") return { bg: "bg-green-500", text: "text-green-600", ring: "ring-green-400" }
-    if (outcome === "available") return { bg: "bg-green-500", text: "text-green-600", ring: "ring-green-400" }
-    if (outcome === "unavailable" || outcome === "no_answer" || outcome === "voicemail" || outcome === "busy") return { bg: "bg-red-500", text: "text-red-600", ring: "ring-red-400" }
-    if (outcome === "unclear") return { bg: "bg-yellow-500", text: "text-yellow-600", ring: "ring-yellow-400" }
+    // BUCKET: Success (green)
+    if (outcome === "hold_confirmed" || outcome === "available") {
+        return { bg: "bg-green-500", text: "text-green-600", ring: "ring-green-400" }
+    }
 
-    // Active call states
-    if (status === "speaking" || status === "listening") return { bg: "bg-blue-500", text: "text-blue-600", ring: "ring-blue-400" }
-    if (status === "answered") return { bg: "bg-blue-400", text: "text-blue-600", ring: "ring-blue-300" }
-    if (status === "calling" || status === "dialing" || status === "ringing") return { bg: "bg-amber-500", text: "text-amber-600", ring: "ring-amber-400" }
+    // BUCKET: No Luck (gray)
+    if (outcome === "unavailable" || outcome === "no_answer" || outcome === "voicemail" ||
+        outcome === "busy" || outcome === "unclear" || outcome === "timeout") {
+        return { bg: "bg-gray-400", text: "text-gray-600", ring: "ring-gray-300" }
+    }
+    if (status === "error" || status === "skipped") {
+        return { bg: "bg-gray-400", text: "text-gray-600", ring: "ring-gray-300" }
+    }
+    if (status === "completed") {
+        return { bg: "bg-gray-400", text: "text-gray-600", ring: "ring-gray-300" }
+    }
 
-    // Terminal/error states
-    if (status === "completed") return { bg: "bg-gray-400", text: "text-gray-600", ring: "ring-gray-300" }
-    if (status === "error" || status === "skipped") return { bg: "bg-red-500", text: "text-red-600", ring: "ring-red-400" }
+    // BUCKET: In Progress (amber) - includes calling, talking, queued
+    if (status === "speaking" || status === "listening" || status === "answered" ||
+        status === "calling" || status === "dialing" || status === "ringing") {
+        return { bg: "bg-amber-500", text: "text-amber-600", ring: "ring-amber-400" }
+    }
 
-    return { bg: "bg-gray-300", text: "text-gray-500", ring: "ring-gray-200" }
+    // Default: Queued (lighter amber)
+    return { bg: "bg-amber-300", text: "text-amber-500", ring: "ring-amber-200" }
 }
 
 // Get status icon component
@@ -101,32 +110,38 @@ function getStatusIcon(status: string, outcome?: string) {
     return <Clock className="w-4 h-4" />
 }
 
-// Get status text - USER-FRIENDLY descriptions of what's happening
+// Get status text - 5 USER-FACING states (simplified from 10+ internal states)
+// Queued → Calling → Talking → Done (Success) → Done (No Luck)
 function getStatusText(status: string, outcome?: string): string {
-    // Outcomes first (these override status)
-    if (outcome === "hold_confirmed") return "Hold Confirmed! 🎉"
-    if (outcome === "available") return "Table Available!"
-    if (outcome === "unavailable") return "Not Available"
-    if (outcome === "no_answer") return "No Answer"
-    if (outcome === "voicemail") return "Reached Voicemail"
-    if (outcome === "busy") return "Line Busy"
-    if (outcome === "unclear") return "Response Unclear"
-    if (outcome === "timeout") return "Call Timed Out"
+    // BUCKET 4/5: Done - Success
+    if (outcome === "hold_confirmed") return "✓ Hold Confirmed!"
+    if (outcome === "available") return "✓ Available"
 
-    // Granular call states - narrate what's happening
-    if (status === "dialing") return "Dialing..."
-    if (status === "ringing") return "Ringing..."
-    if (status === "answered") return "Restaurant answered!"
-    if (status === "speaking") return "Speaking with host..."
-    if (status === "listening") return "Waiting for response..."
-    if (status === "calling") return "Calling..."  // Fallback for legacy
+    // BUCKET 5: Done - No Luck (with specific reason)
+    if (outcome === "unavailable") return "✗ Not Available"
+    if (outcome === "no_answer") return "✗ No Answer"
+    if (outcome === "voicemail") return "✗ Voicemail"
+    if (outcome === "busy") return "✗ Line Busy"
+    if (outcome === "unclear") return "✗ Unclear Response"
+    if (outcome === "timeout") return "✗ Timed Out"
 
-    // Terminal states
-    if (status === "completed") return "Call Complete"
-    if (status === "error") return "Call Failed"
+    // BUCKET 3: Talking (collapses: answered + speaking + listening)
+    if (status === "speaking" || status === "listening" || status === "answered") {
+        return "Talking..."
+    }
+
+    // BUCKET 2: Calling (collapses: dialing + ringing + calling)
+    if (status === "calling" || status === "dialing" || status === "ringing") {
+        return "Calling..."
+    }
+
+    // Terminal without clear outcome
+    if (status === "completed") return "Done"
+    if (status === "error") return "✗ Failed"
     if (status === "skipped") return "Skipped"
 
-    return "Waiting..."
+    // BUCKET 1: Queued
+    return "Queued"
 }
 
 export function CallMapVisualization({ userLat, userLng, restaurants, mapUrl }: CallMapVisualizationProps) {
@@ -219,17 +234,22 @@ export function CallMapVisualization({ userLat, userLng, restaurants, mapUrl }: 
                     </div>
                 </div>
 
-                {/* Legend */}
-                <div className="absolute bottom-4 left-4 right-4 flex justify-center gap-3 text-xs text-white">
-                    <span className="flex items-center gap-1 bg-black/50 backdrop-blur-sm px-2 py-1 rounded">
-                        <span className="w-2 h-2 rounded-full bg-amber-500" /> Calling
-                    </span>
-                    <span className="flex items-center gap-1 bg-black/50 backdrop-blur-sm px-2 py-1 rounded">
-                        <span className="w-2 h-2 rounded-full bg-blue-500" /> Speaking
-                    </span>
-                    <span className="flex items-center gap-1 bg-black/50 backdrop-blur-sm px-2 py-1 rounded">
-                        <span className="w-2 h-2 rounded-full bg-blue-400" /> Listening
-                    </span>
+                {/* Legend - 3 simple buckets + timeout info */}
+                <div className="absolute bottom-4 left-4 right-4">
+                    <div className="flex justify-center gap-3 text-xs text-white mb-2">
+                        <span className="flex items-center gap-1 bg-black/50 backdrop-blur-sm px-2 py-1 rounded">
+                            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /> In Progress
+                        </span>
+                        <span className="flex items-center gap-1 bg-black/50 backdrop-blur-sm px-2 py-1 rounded">
+                            <span className="w-2 h-2 rounded-full bg-green-500" /> Success
+                        </span>
+                        <span className="flex items-center gap-1 bg-black/50 backdrop-blur-sm px-2 py-1 rounded">
+                            <span className="w-2 h-2 rounded-full bg-gray-400" /> No Luck
+                        </span>
+                    </div>
+                    <p className="text-center text-[10px] text-white/60">
+                        We&apos;ll hang up after ~90s if no response
+                    </p>
                 </div>
             </div>
 

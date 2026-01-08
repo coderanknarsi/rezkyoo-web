@@ -515,11 +515,16 @@ export default function BatchStatusPage() {
               "bg-gradient-to-r from-red-500 to-red-600"
             }`}>
             <CardContent className="p-4">
-              {/* STATE: Calls In Progress - Show disabled "In Progress" */}
+              {/* STATE: Calls In Progress - Show progress with time estimate */}
               {isCalling && (
-                <div className="w-full h-14 flex items-center justify-center text-lg font-semibold bg-white/90 text-amber-700 rounded-md shadow-lg">
-                  <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
-                  Calling Restaurants... ({completedItems}/{totalItems})
+                <div className="text-center">
+                  <div className="w-full h-14 flex items-center justify-center text-lg font-semibold bg-white/90 text-amber-700 rounded-md shadow-lg">
+                    <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
+                    Calling {completedItems + 1} of {totalItems}
+                  </div>
+                  <p className="text-white/80 text-sm mt-2">
+                    ~{Math.max(1, Math.ceil((totalItems - completedItems) * 0.5))} min remaining
+                  </p>
                 </div>
               )}
 
