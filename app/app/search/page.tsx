@@ -350,56 +350,55 @@ export default function SearchPage() {
                 </div>
               </div>
 
-              {/* Time */}
-              <div className="grid gap-2">
-                <label className="text-sm font-semibold text-red-600" htmlFor="time">
+              {/* Time - Quick Select Buttons */}
+              <div className="grid gap-3">
+                <label className="text-sm font-semibold text-red-600">
                   Time
                 </label>
-                <select
-                  id="time"
-                  value={time}
-                  onChange={(event) => setTime(event.target.value)}
-                  className="flex h-12 w-full rounded-md border border-zinc-200 bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
-                >
-                  <option value="">Select a time</option>
-                  {/* Popular times first */}
-                  <optgroup label="Popular Dinner Times">
-                    {availableTimeOptions
-                      .filter(opt => ['18:00', '18:30', '19:00', '19:30', '20:00'].includes(opt.value))
-                      .map((opt) => (
-                        <option key={`pop-${opt.value}`} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                  </optgroup>
-                  <optgroup label="Morning (Before 12 PM)">
-                    {availableTimeOptions
-                      .filter(opt => opt.value < '12:00')
-                      .map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                  </optgroup>
-                  <optgroup label="Afternoon (12 PM - 5 PM)">
-                    {availableTimeOptions
-                      .filter(opt => opt.value >= '12:00' && opt.value < '17:00')
-                      .map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                  </optgroup>
-                  <optgroup label="Evening (After 5 PM)">
-                    {availableTimeOptions
-                      .filter(opt => opt.value >= '17:00')
-                      .map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                  </optgroup>
-                </select>
+
+                {/* Quick select time buttons - prime dinner hours */}
+                <div className="grid grid-cols-4 gap-2">
+                  {['17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00', '22:30'].map(t => {
+                    const opt = availableTimeOptions.find(o => o.value === t)
+                    if (!opt) return null // Skip if time is in the past
+
+                    const isSelected = time === t
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setTime(t)}
+                        className={`py-2.5 px-2 text-sm font-medium rounded-lg border transition-all ${isSelected
+                            ? 'bg-red-500 text-white border-red-500 shadow-md'
+                            : 'bg-white text-zinc-700 border-zinc-200 hover:border-red-300 hover:bg-red-50'
+                          }`}
+                      >
+                        {opt.label}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* "Other time" expandable section */}
+                <details className="group">
+                  <summary className="text-sm text-zinc-500 cursor-pointer hover:text-red-600 transition-colors">
+                    Need a different time? <span className="group-open:hidden">Show all...</span>
+                  </summary>
+                  <select
+                    id="time"
+                    value={time}
+                    onChange={(event) => setTime(event.target.value)}
+                    className="mt-2 flex h-11 w-full rounded-md border border-zinc-200 bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2"
+                  >
+                    <option value="">Select a time</option>
+                    {availableTimeOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </details>
+
                 {date === getTodayDate() && availableTimeOptions.length < ALL_TIME_OPTIONS.length && (
                   <p className="text-xs text-muted-foreground">
                     Only showing times at least 30 min from now

@@ -21,6 +21,15 @@ import { DynamicCallMap } from "./components/DynamicCallMap"
 
 const POLL_INTERVAL_MS = 5000 // 5 seconds during active calls
 
+// Format 24-hour time to 12-hour format (e.g., "19:30" -> "7:30 PM")
+function formatTime12Hour(time24: string): string {
+  if (!time24 || !time24.includes(':')) return time24
+  const [hours, minutes] = time24.split(':').map(Number)
+  const period = hours >= 12 ? 'PM' : 'AM'
+  const hours12 = hours % 12 || 12
+  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`
+}
+
 type CallStatus = "pending" | "calling" | "speaking" | "completed" | "failed" | "no_answer" | "skipped" | "error"
 
 type CallResult = {
@@ -413,7 +422,7 @@ export default function BatchStatusPage() {
                 )}
                 {query.time && (
                   <span className="px-2 py-1 rounded-full bg-zinc-100 text-zinc-700">
-                    {query.time}
+                    {formatTime12Hour(query.time)}
                   </span>
                 )}
                 {query.date && (
