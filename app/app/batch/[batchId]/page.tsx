@@ -407,10 +407,14 @@ export default function BatchStatusPage() {
               )}
             </div>
 
-            {/* Search Query Banner */}
+            {/* Search Query Banner - Simplified */}
             {query && (
               <div className="flex flex-wrap items-center gap-2 mt-3 text-sm">
-                {query.craving?.chips?.map((chip, i) => (
+                {/* Show user's craving/search term - filter out confusing generic terms */}
+                {query.craving?.chips?.filter(chip =>
+                  // Filter out generic/meaningless chips
+                  !['cuisine', 'dishes', 'dish', '$', '$$', '$$$', 'no exclusions', 'any', 'food', 'restaurant', 'restaurants'].includes(chip.toLowerCase())
+                ).slice(0, 3).map((chip, i) => (
                   <span key={i} className="px-2 py-1 rounded-full bg-red-100 text-red-700 font-medium">
                     {chip}
                   </span>

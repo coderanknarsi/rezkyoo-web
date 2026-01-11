@@ -11,6 +11,7 @@ type Restaurant = {
     name: string
     lat: number
     lng: number
+    index?: number  // For numbered markers
 }
 
 type Props = {
@@ -60,45 +61,78 @@ export function DynamicCallMap({
                 // Create map with Map ID for cloud styling
                 mapInstance.current = new Map(mapRef.current, {
                     center,
-                    zoom: 14,
+                    zoom: 13,  // Slightly zoomed out for better overview
                     mapId: process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID || undefined,
                     disableDefaultUI: true,
                     gestureHandling: "greedy",
                     zoomControl: true,
                 })
 
-                // User location marker (if provided)
+                // Bounds to fit all markers
+                const bounds = new google.maps.LatLngBounds()
+
+                // User location marker - MUCH MORE PROMINENT with "You" label
                 if (userLocation) {
+                    bounds.extend(userLocation)
                     const userEl = document.createElement("div")
-                    userEl.className = "relative"
+                    userEl.className = "relative flex flex-col items-center"
                     userEl.innerHTML = `
-                        <div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg"></div>
-                        <div class="absolute inset-0 w-4 h-4 bg-blue-500 rounded-full animate-ping opacity-75"></div>
+                        <div class="relative">
+                            <div class="w-10 h-10 bg-blue-500 rounded-full border-4 border-white shadow-xl flex items-center justify-center z-10 relative">
+                                <span class="text-white font-bold text-xs">U</span>
+                            </div>
+                            <div class="absolute inset-0 w-10 h-10 bg-blue-500 rounded-full animate-ping opacity-40"></div>
+                            <div class="absolute -inset-3 bg-blue-400/20 rounded-full animate-pulse"></div>
+                        </div>
+                        <div class="mt-1 bg-blue-600 text-white text-xs font-semibold px-2 py-0.5 rounded-full shadow-md whitespace-nowrap">
+                            You are here
+                        </div>
                     `
                     new AdvancedMarkerElement({
                         map: mapInstance.current,
                         position: userLocation,
                         content: userEl,
                         title: "Your Location",
+                        zIndex: 1000,  // User always on top
                     })
                 }
 
-                // Restaurant markers
-                for (const r of restaurants) {
-                    if (!r.lat || !r.lng) continue
+                // Restaurant markers with INDEX NUMBERS
+                restaurants.forEach((r, index) => {
+                    if (!r.lat || !r.lng) return
+
+                    bounds.extend({ lat: r.lat, lng: r.lng })
 
                     const el = document.createElement("div")
                     el.className = "restaurant-marker"
-                    updateMarkerStyle(el, r.id === activeRestaurantId, renderPhase)
+                    updateMarkerStyle(el, r.id === activeRestaurantId, renderPhase, index + 1)
 
                     const marker = new AdvancedMarkerElement({
                         map: mapInstance.current,
                         position: { lat: r.lat, lng: r.lng },
                         content: el,
-                        title: r.name,
+                        title: `${index + 1}. ${r.name}`,
+                        zIndex: r.id === activeRestaurantId ? 500 : 100,
                     })
 
                     markersRef.current.set(r.id, marker)
+                })
+
+                // Fit map to show all markers with padding
+                if (restaurants.length > 0 || userLocation) {
+                    mapInstance.current.fitBounds(bounds, {
+                        top: 60,
+                        right: 40,
+                        bottom: 80,
+                        left: 40,
+                    })
+                    // Ensure minimum zoom level (don't zoom in too much for single restaurant)
+                    const listener = mapInstance.current.addListener('idle', () => {
+                        if (mapInstance.current && mapInstance.current.getZoom()! > 15) {
+                            mapInstance.current.setZoom(15)
+                        }
+                        if (listener) google.maps.event.removeListener(listener)
+                    })
                 }
 
                 setIsLoaded(true)
@@ -118,12 +152,12 @@ export function DynamicCallMap({
     useEffect(() => {
         if (!isLoaded) return
 
-        for (const r of restaurants) {
+        restaurants.forEach((r, index) => {
             const marker = markersRef.current.get(r.id)
             const el = marker?.content as HTMLElement | undefined
-            if (!el) continue
-            updateMarkerStyle(el, r.id === activeRestaurantId, renderPhase)
-        }
+            if (!el) return
+            updateMarkerStyle(el, r.id === activeRestaurantId, renderPhase, index + 1)
+        })
     }, [isLoaded, restaurants, activeRestaurantId, renderPhase])
 
     return (
@@ -152,21 +186,29 @@ export function DynamicCallMap({
     )
 }
 
-// Helper to style markers based on state
-function updateMarkerStyle(el: HTMLElement, isActive: boolean, renderPhase: RenderPhase) {
+// Helper to style markers based on state - NOW WITH INDEX NUMBERS
+function updateMarkerStyle(el: HTMLElement, isActive: boolean, renderPhase: RenderPhase, index: number) {
     if (isActive) {
-        // Active call - pulsing amber with glow
-        el.className = "relative"
+        // Active call - pulsing amber with glow and number
+        el.className = "relative flex flex-col items-center"
         el.innerHTML = `
-            <div class="w-5 h-5 bg-amber-500 rounded-full border-2 border-white shadow-lg z-10 relative"></div>
-            <div class="absolute inset-0 w-5 h-5 bg-amber-400 rounded-full animate-ping"></div>
-            <div class="absolute -inset-2 bg-amber-500/30 rounded-full animate-pulse"></div>
+            <div class="relative">
+                <div class="w-10 h-10 bg-amber-500 rounded-full border-3 border-white shadow-xl flex items-center justify-center z-10 relative">
+                    <span class="text-white font-bold text-sm">${index}</span>
+                </div>
+                <div class="absolute inset-0 w-10 h-10 bg-amber-400 rounded-full animate-ping"></div>
+                <div class="absolute -inset-3 bg-amber-500/30 rounded-full animate-pulse"></div>
+            </div>
+            <div class="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-amber-500 -mt-1"></div>
         `
     } else {
-        // Neutral/queued - simple dot
-        el.className = ""
+        // Queued/completed restaurants - numbered markers like Google Maps pins
+        el.className = "relative flex flex-col items-center"
         el.innerHTML = `
-            <div class="w-3 h-3 bg-red-500 rounded-full border-2 border-white shadow-md"></div>
+            <div class="w-8 h-8 bg-red-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center">
+                <span class="text-white font-bold text-sm">${index}</span>
+            </div>
+            <div class="w-0 h-0 border-l-[5px] border-r-[5px] border-t-[7px] border-l-transparent border-r-transparent border-t-red-500 -mt-0.5"></div>
         `
     }
 }

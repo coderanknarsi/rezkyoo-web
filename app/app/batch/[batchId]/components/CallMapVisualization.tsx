@@ -226,19 +226,23 @@ export function CallMapVisualization({ userLat, userLng, restaurants, mapUrl, is
                     </div>
                 </div>
 
-                {/* Center pulsing indicator */}
+                {/* User location marker - prominent and labeled */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="relative">
+                    <div className="relative flex flex-col items-center">
                         {/* Pulse rings */}
                         <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="w-16 h-16 rounded-full border-2 border-red-500/30 animate-ping" />
+                            <div className="w-20 h-20 rounded-full border-2 border-blue-500/30 animate-ping" />
                         </div>
                         <div className="absolute inset-0 flex items-center justify-center" style={{ animationDelay: '0.5s' }}>
-                            <div className="w-12 h-12 rounded-full border-2 border-red-500/50 animate-ping" />
+                            <div className="w-14 h-14 rounded-full border-2 border-blue-500/50 animate-ping" />
                         </div>
-                        {/* Center dot */}
-                        <div className="relative w-6 h-6 bg-red-500 rounded-full shadow-lg shadow-red-500/50 flex items-center justify-center">
-                            <div className="w-2 h-2 bg-white rounded-full" />
+                        {/* Main marker */}
+                        <div className="relative w-10 h-10 bg-blue-500 rounded-full shadow-xl shadow-blue-500/50 flex items-center justify-center border-4 border-white">
+                            <span className="text-white font-bold text-sm">U</span>
+                        </div>
+                        {/* "You are here" label */}
+                        <div className="mt-2 bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-lg whitespace-nowrap">
+                            You are here
                         </div>
                     </div>
                 </div>
