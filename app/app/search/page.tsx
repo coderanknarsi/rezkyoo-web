@@ -31,10 +31,13 @@ function generateTimeOptions() {
 
 const ALL_TIME_OPTIONS = generateTimeOptions()
 
-// Get today's date in YYYY-MM-DD format
+// Get today's date in YYYY-MM-DD format (using LOCAL timezone)
 function getTodayDate() {
   const now = new Date()
-  return now.toISOString().split("T")[0]
+  const year = now.getFullYear()
+  const month = (now.getMonth() + 1).toString().padStart(2, "0")
+  const day = now.getDate().toString().padStart(2, "0")
+  return `${year}-${month}-${day}`
 }
 
 // Get current time in HH:MM format
