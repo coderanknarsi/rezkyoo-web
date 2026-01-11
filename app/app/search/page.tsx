@@ -284,30 +284,29 @@ export default function SearchPage() {
 
               {/* Location */}
               <div className="grid gap-2">
-                <label className="text-sm font-semibold text-red-600" htmlFor="location">
-                  Location
-                </label>
-                <div className="flex gap-2">
-                  <Input
-                    id="location"
-                    value={location}
-                    onChange={(event) => setLocation(event.target.value)}
-                    placeholder="City, neighborhood, or address"
-                    required
-                    className="flex-1 h-12 text-base border-zinc-200 focus:border-red-400 focus:ring-red-400"
-                  />
-                  <Button
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-semibold text-red-600" htmlFor="location">
+                    Location
+                  </label>
+                  {/* Prominent "Use my location" button */}
+                  <button
                     type="button"
-                    variant="outline"
-                    size="icon"
                     onClick={handleGetLocation}
                     disabled={gettingLocation}
-                    title="Use my location"
-                    className="h-12 w-12 shrink-0 border-zinc-200 hover:bg-red-50 hover:border-red-300"
+                    className="flex items-center gap-1.5 text-sm text-red-600 hover:text-red-700 disabled:opacity-50 transition-colors"
                   >
-                    <MapPin className={`h-5 w-5 ${gettingLocation ? "animate-pulse text-red-500" : "text-red-500"}`} />
-                  </Button>
+                    <MapPin className={`h-4 w-4 ${gettingLocation ? "animate-pulse" : ""}`} />
+                    {gettingLocation ? "Finding you..." : "Use my location"}
+                  </button>
                 </div>
+                <Input
+                  id="location"
+                  value={location}
+                  onChange={(event) => setLocation(event.target.value)}
+                  placeholder="City, neighborhood, or address"
+                  required
+                  className="h-12 text-base border-zinc-200 focus:border-red-400 focus:ring-red-400"
+                />
                 {locationError && (
                   <p className="text-xs text-red-500">{locationError}</p>
                 )}
