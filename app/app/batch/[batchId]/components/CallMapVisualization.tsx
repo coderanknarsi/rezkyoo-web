@@ -167,6 +167,48 @@ export function CallMapVisualization({ userLat, userLng, restaurants, mapUrl, is
         r.status === "calling" || r.status === "dialing" || r.status === "ringing"
     )
 
+    // Calculate restaurant positions relative to user location for static map
+    // DYNAMIC: Calculate the actual span needed to fit all restaurants
+    const restaurantsWithCoords = restaurants.filter(r => r.lat && r.lng)
+
+    // Find the max distance from user in any direction
+    let maxLatOffset = 0.005  // Minimum span of ~0.5km
+    let maxLngOffset = 0.005
+
+    restaurantsWithCoords.forEach(r => {
+        if (r.lat && r.lng) {
+            const latOffset = Math.abs(r.lat - userLat)
+            const lngOffset = Math.abs(r.lng - userLng)
+            maxLatOffset = Math.max(maxLatOffset, latOffset)
+            maxLngOffset = Math.max(maxLngOffset, lngOffset)
+        }
+    })
+
+    // Add 20% padding so markers aren't at the edge
+    const latSpan = maxLatOffset * 1.4
+    const lngSpan = maxLngOffset * 1.4
+
+    const getRestaurantPosition = (lat?: number, lng?: number) => {
+        if (!lat || !lng) return null
+
+        // Calculate offset from user's position (center)
+        const latOffset = lat - userLat
+        const lngOffset = lng - userLng
+
+        // Convert to percentage of map area (50% = center)
+        // Positive lat = north = up = lower percentage (top of map)
+        // Positive lng = east = right = higher percentage
+        // Use 35% swing from center to keep markers clearly visible
+        const topPct = 50 - (latOffset / latSpan) * 35
+        const leftPct = 50 + (lngOffset / lngSpan) * 35
+
+        // Clamp to visible area with generous padding
+        return {
+            top: Math.max(15, Math.min(75, topPct)),
+            left: Math.max(15, Math.min(85, leftPct)),
+        }
+    }
+
     return (
         <div className="flex flex-col lg:flex-row gap-4 w-full">
             {/* Map Section */}
@@ -196,6 +238,39 @@ export function CallMapVisualization({ userLat, userLng, restaurants, mapUrl, is
 
                 {/* Overlay gradient for text readability */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30" />
+
+                {/* NUMBERED RESTAURANT MARKERS - correlate with list panel */}
+                {restaurants.map((r, index) => {
+                    const pos = getRestaurantPosition(r.lat, r.lng)
+                    if (!pos) return null
+
+                    const isActive = r.status === "calling" || r.status === "speaking" ||
+                        r.status === "dialing" || r.status === "ringing" ||
+                        r.status === "listening" || r.status === "answered"
+
+                    return (
+                        <div
+                            key={r.id}
+                            className="absolute pointer-events-none transform -translate-x-1/2 -translate-y-1/2"
+                            style={{ top: `${pos.top}%`, left: `${pos.left}%` }}
+                        >
+                            <div className="flex flex-col items-center">
+                                {/* Numbered marker pin */}
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shadow-lg border-2 border-white ${isActive
+                                    ? 'bg-amber-500 animate-pulse'
+                                    : 'bg-red-500'
+                                    }`}>
+                                    <span className="text-white font-bold text-sm">{index + 1}</span>
+                                </div>
+                                {/* Pin pointer */}
+                                <div className={`w-0 h-0 border-l-[5px] border-r-[5px] border-t-[6px] border-l-transparent border-r-transparent -mt-0.5 ${isActive
+                                    ? 'border-t-amber-500'
+                                    : 'border-t-red-500'
+                                    }`} />
+                            </div>
+                        </div>
+                    )
+                })}
 
                 {/* Status overlay - shows active call prominently */}
                 <div className="absolute top-4 left-4 right-4 flex flex-col gap-2">

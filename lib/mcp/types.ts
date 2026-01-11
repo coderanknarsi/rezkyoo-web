@@ -1,6 +1,8 @@
 export type FindRestaurantsInput = {
   craving_text: string
   location: string
+  user_lat?: number  // Exact GPS latitude (for map display)
+  user_lng?: number  // Exact GPS longitude (for map display)
   party_size?: number
   date?: string
   time?: string
@@ -35,10 +37,10 @@ export type BatchItem = {
 
 export type GetBatchStatusResponse =
   | {
-      ok: true
-      status: string
-      items: any[]
-      paywall_required?: boolean
-      error?: string
-    }
+    ok: true
+    status: string
+    items: any[]
+    paywall_required?: boolean
+    error?: string
+  }
   | McpErr

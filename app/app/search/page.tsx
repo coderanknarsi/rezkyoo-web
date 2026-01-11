@@ -74,6 +74,7 @@ export default function SearchPage() {
   const router = useRouter()
   const [cravingText, setCravingText] = React.useState("")
   const [location, setLocation] = React.useState("")
+  const [userCoords, setUserCoords] = React.useState<{ lat: number; lng: number } | null>(null)
   const [partySize, setPartySize] = React.useState("")
   const [date, setDate] = React.useState("")
   const [time, setTime] = React.useState("")
@@ -111,6 +112,9 @@ export default function SearchPage() {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords
+
+        // Store exact GPS coordinates for map display
+        setUserCoords({ lat: latitude, lng: longitude })
 
         // Reverse geocode to get readable address
         try {
@@ -199,6 +203,12 @@ export default function SearchPage() {
       location,
     }
 
+    // Include exact GPS coordinates if available
+    if (userCoords) {
+      payload.user_lat = userCoords.lat
+      payload.user_lng = userCoords.lng
+    }
+
     if (partySize) {
       payload.party_size = Number(partySize)
     }
@@ -229,6 +239,10 @@ export default function SearchPage() {
       }
 
       if (data?.batchId) {
+        // Store GPS coordinates in sessionStorage for the results page
+        if (userCoords) {
+          sessionStorage.setItem(`batch_${data.batchId}_userLocation`, JSON.stringify(userCoords))
+        }
         router.push(`/app/batch/${data.batchId}`)
         return
       }
@@ -369,8 +383,8 @@ export default function SearchPage() {
                         type="button"
                         onClick={() => setTime(t)}
                         className={`py-2.5 px-2 text-sm font-medium rounded-lg border transition-all ${isSelected
-                            ? 'bg-red-500 text-white border-red-500 shadow-md'
-                            : 'bg-white text-zinc-700 border-zinc-200 hover:border-red-300 hover:bg-red-50'
+                          ? 'bg-red-500 text-white border-red-500 shadow-md'
+                          : 'bg-white text-zinc-700 border-zinc-200 hover:border-red-300 hover:bg-red-50'
                           }`}
                       >
                         {opt.label}

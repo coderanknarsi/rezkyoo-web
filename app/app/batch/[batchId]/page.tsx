@@ -225,13 +225,35 @@ export default function BatchStatusPage() {
       if (data?.query) {
         setQuery(data.query)
       }
-      // Extract user location from map_center first (most accurate)
-      if (data?.map_center?.lat && data?.map_center?.lng) {
-        setUserLocation({ lat: data.map_center.lat, lng: data.map_center.lng })
-      } else if (data?.user_location) {
+
+      // Extract user location - prioritize exact GPS from sessionStorage
+      // 1. Check sessionStorage for exact GPS coordinates (stored by search page)
+      const sessionKey = `batch_${batchId}_userLocation`
+      const storedLocation = typeof window !== 'undefined' ? sessionStorage.getItem(sessionKey) : null
+      if (storedLocation) {
+        try {
+          const coords = JSON.parse(storedLocation)
+          if (coords.lat && coords.lng) {
+            setUserLocation(coords)
+            // Clean up after use
+            sessionStorage.removeItem(sessionKey)
+            return  // Skip other fallbacks - we have exact GPS
+          }
+        } catch (e) {
+          // Invalid JSON, continue to fallbacks
+        }
+      }
+
+      // 2. Check if backend returned user_location (exact GPS if backend stored it)
+      if (data?.user_location?.lat && data?.user_location?.lng) {
         setUserLocation(data.user_location)
-      } else if (Array.isArray(data?.items) && data.items.length > 0 && data.items[0].lat) {
-        // Fallback: Estimate user location from restaurant positions (center of all)
+      }
+      // 3. Fallback to map_center (geocoded city center)
+      else if (data?.map_center?.lat && data?.map_center?.lng) {
+        setUserLocation({ lat: data.map_center.lat, lng: data.map_center.lng })
+      }
+      // 4. Last resort: Estimate from restaurant positions
+      else if (Array.isArray(data?.items) && data.items.length > 0 && data.items[0].lat) {
         const lats = data.items.filter((i: any) => i.lat).map((i: any) => i.lat)
         const lngs = data.items.filter((i: any) => i.lng).map((i: any) => i.lng)
         if (lats.length > 0) {
@@ -470,21 +492,19 @@ export default function BatchStatusPage() {
               )
             })()}
 
-            {/* Map Widget - show in found state (before calls) */}
+            {/* Map Widget - show in found state (before calls) - uses DynamicCallMap for proper auto-zoom */}
             {!isCalling && !isCompleted && userLocation && items.length > 0 && (
               <div className="mb-6">
-                <CallMapVisualization
-                  userLat={userLocation.lat}
-                  userLng={userLocation.lng}
-                  mapUrl={mapUrl}
-                  isPaid={false} // Always process-only before calls start
-                  restaurants={items.map(item => ({
+                <DynamicCallMap
+                  renderPhase="process"
+                  center={userLocation}
+                  userLocation={userLocation}
+                  activeRestaurantId={null}
+                  restaurants={items.filter(item => item.lat && item.lng).map(item => ({
                     id: item.id || item.place_id || item.name || '',
                     name: item.name || 'Unknown',
-                    lat: item.lat,
-                    lng: item.lng,
-                    status: 'pending' as const,
-                    outcome: undefined,
+                    lat: item.lat!,
+                    lng: item.lng!,
                   }))}
                 />
               </div>
