@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { AppHeader } from "@/components/AppHeader"
 import { useAuth } from "@/lib/auth-context"
 import { CallMapVisualization } from "./components/CallMapVisualization"
 import { DynamicCallMap } from "./components/DynamicCallMap"
@@ -399,88 +400,109 @@ export default function BatchStatusPage() {
   const isCompleted = stage === "completed"
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-red-50/30 via-white to-white dark:from-zinc-900 dark:via-zinc-950 dark:to-zinc-950 relative overflow-hidden">
-      {/* Background decorations */}
-      <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-red-400/10 blur-3xl" />
-      <div className="absolute top-1/3 -left-40 h-80 w-80 rounded-full bg-orange-400/10 blur-3xl" />
+    <>
+      <AppHeader />
+      <div className="min-h-screen bg-gradient-to-b from-red-50/30 via-white to-white dark:from-zinc-900 dark:via-zinc-950 dark:to-zinc-950 relative overflow-hidden">
+        {/* Background decorations */}
+        <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-red-400/10 blur-3xl" />
+        <div className="absolute top-1/3 -left-40 h-80 w-80 rounded-full bg-orange-400/10 blur-3xl" />
 
-      <div className="relative mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-12">
-        {/* Header */}
-        <Card className="border-0 shadow-lg bg-white/80 backdrop-blur dark:bg-zinc-900/80">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-2xl font-bold">
-                  {isReady ? "Restaurants Found!" :
-                    isCalling ? "Checking Availability..." :
-                      isCompleted ? "Results" : "Finding Restaurants..."}
-                </CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {isReady && `${items.length} restaurants match your search`}
-                  {isCalling && `${callingItems} calling, ${pendingItems} queued`}
-                  {isCompleted && `${available} available out of ${totalItems} called`}
-                </p>
+        <div className="relative mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-12">
+          {/* Header */}
+          <Card className="border-0 shadow-lg bg-white/80 backdrop-blur dark:bg-zinc-900/80">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-2xl font-bold">
+                    {isReady ? "Restaurants Found!" :
+                      isCalling ? "Checking Availability..." :
+                        isCompleted ? "Results" : "Finding Restaurants..."}
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {isReady && `${items.length} restaurants match your search`}
+                    {isCalling && `${callingItems} calling, ${pendingItems} queued`}
+                    {isCompleted && `${available} available out of ${totalItems} called`}
+                  </p>
+                </div>
+                {isCalling && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-100 text-red-700">
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    <span className="text-sm font-medium">Live</span>
+                  </div>
+                )}
               </div>
-              {isCalling && (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-100 text-red-700">
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  <span className="text-sm font-medium">Live</span>
+
+              {/* Search Query Banner - Simplified */}
+              {query && (
+                <div className="flex flex-wrap items-center gap-2 mt-3 text-sm">
+                  {/* Show user's craving/search term - filter out confusing generic terms */}
+                  {query.craving?.chips?.filter(chip =>
+                    // Filter out generic/meaningless chips
+                    !['cuisine', 'dishes', 'dish', '$', '$$', '$$$', 'no exclusions', 'any', 'food', 'restaurant', 'restaurants'].includes(chip.toLowerCase())
+                  ).slice(0, 3).map((chip, i) => (
+                    <span key={i} className="px-2 py-1 rounded-full bg-red-100 text-red-700 font-medium">
+                      {chip}
+                    </span>
+                  ))}
+                  {query.party_size && (
+                    <span className="px-2 py-1 rounded-full bg-zinc-100 text-zinc-700">
+                      {query.party_size} guests
+                    </span>
+                  )}
+                  {query.time && (
+                    <span className="px-2 py-1 rounded-full bg-zinc-100 text-zinc-700">
+                      {formatTime12Hour(query.time)}
+                    </span>
+                  )}
+                  {query.date && (
+                    <span className="px-2 py-1 rounded-full bg-zinc-100 text-zinc-700">
+                      {query.date}
+                    </span>
+                  )}
+                  {query.location && (
+                    <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      {query.location.length > 30 ? query.location.substring(0, 30) + "..." : query.location}
+                    </span>
+                  )}
                 </div>
               )}
-            </div>
+            </CardHeader>
+            <CardContent>
+              {/* DYNAMIC MAP - show during calls (lazy-loaded) */}
+              {isCalling && userLocation && items.length > 0 && (() => {
+                // Find active restaurant for highlight
+                const activeItem = items.find(i =>
+                  i.status === "calling" || i.status === "speaking"
+                )
+                const activeRestaurantId = activeItem?.id || activeItem?.place_id || null
 
-            {/* Search Query Banner - Simplified */}
-            {query && (
-              <div className="flex flex-wrap items-center gap-2 mt-3 text-sm">
-                {/* Show user's craving/search term - filter out confusing generic terms */}
-                {query.craving?.chips?.filter(chip =>
-                  // Filter out generic/meaningless chips
-                  !['cuisine', 'dishes', 'dish', '$', '$$', '$$$', 'no exclusions', 'any', 'food', 'restaurant', 'restaurants'].includes(chip.toLowerCase())
-                ).slice(0, 3).map((chip, i) => (
-                  <span key={i} className="px-2 py-1 rounded-full bg-red-100 text-red-700 font-medium">
-                    {chip}
-                  </span>
-                ))}
-                {query.party_size && (
-                  <span className="px-2 py-1 rounded-full bg-zinc-100 text-zinc-700">
-                    {query.party_size} guests
-                  </span>
-                )}
-                {query.time && (
-                  <span className="px-2 py-1 rounded-full bg-zinc-100 text-zinc-700">
-                    {formatTime12Hour(query.time)}
-                  </span>
-                )}
-                {query.date && (
-                  <span className="px-2 py-1 rounded-full bg-zinc-100 text-zinc-700">
-                    {query.date}
-                  </span>
-                )}
-                {query.location && (
-                  <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 flex items-center gap-1">
-                    <MapPin className="h-3 w-3" />
-                    {query.location.length > 30 ? query.location.substring(0, 30) + "..." : query.location}
-                  </span>
-                )}
-              </div>
-            )}
-          </CardHeader>
-          <CardContent>
-            {/* DYNAMIC MAP - show during calls (lazy-loaded) */}
-            {isCalling && userLocation && items.length > 0 && (() => {
-              // Find active restaurant for highlight
-              const activeItem = items.find(i =>
-                i.status === "calling" || i.status === "speaking"
-              )
-              const activeRestaurantId = activeItem?.id || activeItem?.place_id || null
+                return (
+                  <div className="mb-6">
+                    <DynamicCallMap
+                      renderPhase="process"
+                      center={userLocation}
+                      userLocation={userLocation}
+                      activeRestaurantId={activeRestaurantId}
+                      restaurants={items.filter(item => item.lat && item.lng).map(item => ({
+                        id: item.id || item.place_id || item.name || '',
+                        name: item.name || 'Unknown',
+                        lat: item.lat!,
+                        lng: item.lng!,
+                      }))}
+                    />
+                  </div>
+                )
+              })()}
 
-              return (
+              {/* Map Widget - show in found state (before calls) - uses DynamicCallMap for proper auto-zoom */}
+              {!isCalling && !isCompleted && userLocation && items.length > 0 && (
                 <div className="mb-6">
                   <DynamicCallMap
                     renderPhase="process"
                     center={userLocation}
                     userLocation={userLocation}
-                    activeRestaurantId={activeRestaurantId}
+                    activeRestaurantId={null}
                     restaurants={items.filter(item => item.lat && item.lng).map(item => ({
                       id: item.id || item.place_id || item.name || '',
                       name: item.name || 'Unknown',
@@ -489,277 +511,259 @@ export default function BatchStatusPage() {
                     }))}
                   />
                 </div>
-              )
-            })()}
-
-            {/* Map Widget - show in found state (before calls) - uses DynamicCallMap for proper auto-zoom */}
-            {!isCalling && !isCompleted && userLocation && items.length > 0 && (
-              <div className="mb-6">
-                <DynamicCallMap
-                  renderPhase="process"
-                  center={userLocation}
-                  userLocation={userLocation}
-                  activeRestaurantId={null}
-                  restaurants={items.filter(item => item.lat && item.lng).map(item => ({
-                    id: item.id || item.place_id || item.name || '',
-                    name: item.name || 'Unknown',
-                    lat: item.lat!,
-                    lng: item.lng!,
-                  }))}
-                />
-              </div>
-            )}
-            {/* Progress bar - only during calls */}
-            {(isCalling || isCompleted) && totalItems > 0 && (
-              <div className="mb-4">
-                <div className="flex justify-between text-sm text-muted-foreground mb-2">
-                  <span>{completedItems} of {totalItems} calls completed</span>
-                  {holdsConfirmed > 0 && (
-                    <span className="text-red-600 font-semibold">
-                      {holdsConfirmed} hold{holdsConfirmed > 1 ? "s" : ""} confirmed! 🎉
-                    </span>
-                  )}
-                </div>
-                <div className="h-3 bg-zinc-200 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 transition-all duration-500 ${isCalling ? "animate-pulse" : ""}`}
-                    style={{ width: `${(completedItems / totalItems) * 100}%` }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Stats when complete */}
-            {isCompleted && (
-              <div className="grid grid-cols-3 gap-4 text-center mt-4">
-                <div className="rounded-xl bg-gradient-to-br from-zinc-100 to-zinc-50 p-4 shadow-sm">
-                  <div className="text-3xl font-bold">{totalItems}</div>
-                  <div className="text-xs text-muted-foreground font-medium">Called</div>
-                </div>
-                <div className="rounded-xl bg-gradient-to-br from-green-100 to-emerald-50 p-4 shadow-sm">
-                  <div className="text-3xl font-bold text-green-600">{available}</div>
-                  <div className="text-xs text-green-600 font-medium">Available</div>
-                </div>
-                <div className="rounded-xl bg-gradient-to-br from-red-100 to-orange-50 p-4 shadow-sm">
-                  <div className="text-3xl font-bold text-red-600">{holdsConfirmed}</div>
-                  <div className="text-xs text-red-600 font-medium">On Hold</div>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Action Button - Changes based on state */}
-        {items.length > 0 && (
-          <Card className={`border-0 shadow-lg ${isCalling ? "bg-gradient-to-r from-amber-500 to-orange-500" :
-            isCompleted ? "bg-gradient-to-r from-emerald-500 to-teal-500" :
-              "bg-gradient-to-r from-red-500 to-red-600"
-            }`}>
-            <CardContent className="p-4">
-              {/* STATE: Calls In Progress - Show progress with time estimate */}
-              {isCalling && (
-                <div className="text-center">
-                  <div className="w-full h-14 flex items-center justify-center text-lg font-semibold bg-white/90 text-amber-700 rounded-md shadow-lg">
-                    <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
-                    Calling {completedItems + 1} of {totalItems}
-                  </div>
-                  <p className="text-white/80 text-sm mt-2">
-                    ~{Math.max(1, Math.ceil((totalItems - completedItems) * 0.5))} min remaining
-                  </p>
-                </div>
               )}
-
-              {/* STATE: All Calls Complete - Show "View Results" */}
-              {isCompleted && (
-                <Button
-                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                  className="w-full h-14 text-lg font-semibold bg-white text-emerald-700 hover:bg-white/90 shadow-lg"
-                >
-                  <Check className="h-5 w-5 mr-2" />
-                  View Results ({available} Available)
-                </Button>
-              )}
-
-              {/* STATE: Found (not started) - Show "Check Availability" */}
-              {isReady && (
-                <>
-                  <Button
-                    onClick={handleCheckAvailability}
-                    disabled={isStartingCalls || authLoading}
-                    className="w-full h-14 text-lg font-semibold bg-white text-red-700 hover:bg-white/90 shadow-lg"
-                  >
-                    {isStartingCalls ? (
-                      <>
-                        <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
-                        Starting Calls...
-                      </>
-                    ) : authLoading ? (
-                      <>
-                        <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
-                        Loading...
-                      </>
-                    ) : user ? (
-                      <>
-                        <Phone className="h-5 w-5 mr-2" />
-                        Check Availability at {items.length} Restaurant{items.length > 1 ? "s" : ""}
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="h-5 w-5 mr-2" />
-                        Sign Up to Check Availability
-                      </>
+              {/* Progress bar - only during calls */}
+              {(isCalling || isCompleted) && totalItems > 0 && (
+                <div className="mb-4">
+                  <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                    <span>{completedItems} of {totalItems} calls completed</span>
+                    {holdsConfirmed > 0 && (
+                      <span className="text-red-600 font-semibold">
+                        {holdsConfirmed} hold{holdsConfirmed > 1 ? "s" : ""} confirmed! 🎉
+                      </span>
                     )}
-                  </Button>
-                  {!user && !authLoading && (
-                    <p className="text-center text-white/80 text-sm mt-2">
-                      Free to create an account • Only pay when you book
-                    </p>
-                  )}
-                </>
+                  </div>
+                  <div className="h-3 bg-zinc-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 transition-all duration-500 ${isCalling ? "animate-pulse" : ""}`}
+                      style={{ width: `${(completedItems / totalItems) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Stats when complete */}
+              {isCompleted && (
+                <div className="grid grid-cols-3 gap-4 text-center mt-4">
+                  <div className="rounded-xl bg-gradient-to-br from-zinc-100 to-zinc-50 p-4 shadow-sm">
+                    <div className="text-3xl font-bold">{totalItems}</div>
+                    <div className="text-xs text-muted-foreground font-medium">Called</div>
+                  </div>
+                  <div className="rounded-xl bg-gradient-to-br from-green-100 to-emerald-50 p-4 shadow-sm">
+                    <div className="text-3xl font-bold text-green-600">{available}</div>
+                    <div className="text-xs text-green-600 font-medium">Available</div>
+                  </div>
+                  <div className="rounded-xl bg-gradient-to-br from-red-100 to-orange-50 p-4 shadow-sm">
+                    <div className="text-3xl font-bold text-red-600">{holdsConfirmed}</div>
+                    <div className="text-xs text-red-600 font-medium">On Hold</div>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>
-        )}
 
-        {error && (
-          <Card className="border-red-200 bg-red-50">
-            <CardContent className="flex items-center gap-3 py-4">
-              <AlertCircle className="h-5 w-5 text-red-500" />
-              <span className="text-sm text-red-700">{error}</span>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Restaurant list - hidden during calls to reduce clutter */}
-        {!isCalling && (
-          <div className="grid gap-4">
-            {items.length === 0 ? (
-              <Card className="border-0 shadow-md">
-                <CardContent className="flex flex-col items-center justify-center gap-4 py-16">
-                  <div className="relative">
-                    <div className="absolute inset-0 rounded-full bg-red-500/20 animate-ping" />
-                    <div className="relative rounded-full bg-gradient-to-r from-red-500 to-orange-500 p-4">
-                      <RefreshCw className="h-6 w-6 text-white animate-spin" />
-                    </div>
-                  </div>
+          {/* Action Button - Changes based on state */}
+          {items.length > 0 && (
+            <Card className={`border-0 shadow-lg ${isCalling ? "bg-gradient-to-r from-amber-500 to-orange-500" :
+              isCompleted ? "bg-gradient-to-r from-emerald-500 to-teal-500" :
+                "bg-gradient-to-r from-red-500 to-red-600"
+              }`}>
+              <CardContent className="p-4">
+                {/* STATE: Calls In Progress - Show progress with time estimate */}
+                {isCalling && (
                   <div className="text-center">
-                    <div className="font-semibold text-lg">Finding restaurants...</div>
-                    <div className="text-sm text-muted-foreground">Searching for the best matches</div>
+                    <div className="w-full h-14 flex items-center justify-center text-lg font-semibold bg-white/90 text-amber-700 rounded-md shadow-lg">
+                      <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
+                      Calling {completedItems + 1} of {totalItems}
+                    </div>
+                    <p className="text-white/80 text-sm mt-2">
+                      ~{Math.max(1, Math.ceil((totalItems - completedItems) * 0.5))} min remaining
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
-            ) : (
-              items.map((item) => {
-                const displayId = item.place_id ?? item.id ?? "unknown"
-                const callStatus = item.status as CallStatus | undefined
-                const showCallStatus = !isReady // Only show call status after calls started
+                )}
 
-                return (
-                  <Card
-                    key={displayId}
-                    className={`border-0 shadow-md transition-all ${item.result?.outcome === "hold_confirmed"
-                      ? "bg-gradient-to-r from-green-50 to-emerald-50 ring-2 ring-green-300 shadow-green-100"
-                      : item.result?.outcome === "available"
-                        ? "bg-gradient-to-r from-green-50 to-teal-50 ring-1 ring-green-200"
-                        : item.status === "speaking"
-                          ? "bg-gradient-to-r from-blue-50 to-indigo-50 ring-1 ring-blue-200"
-                          : item.status === "calling"
-                            ? "bg-gradient-to-r from-amber-50 to-orange-50 ring-1 ring-amber-200"
-                            : "bg-white/80 backdrop-blur hover:shadow-lg transition-shadow"
-                      }`}
+                {/* STATE: All Calls Complete - Show "View Results" */}
+                {isCompleted && (
+                  <Button
+                    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                    className="w-full h-14 text-lg font-semibold bg-white text-emerald-700 hover:bg-white/90 shadow-lg"
                   >
-                    <CardContent className="p-6">
-                      <div className="flex items-start gap-4">
-                        {/* Status icon - only show during/after calls */}
-                        {showCallStatus && (
-                          <div className="pt-1">
-                            {getStatusIcon(callStatus)}
-                          </div>
-                        )}
+                    <Check className="h-5 w-5 mr-2" />
+                    View Results ({available} Available)
+                  </Button>
+                )}
 
-                        <div className="flex-1 min-w-0">
-                          {/* Header row */}
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-lg truncate">
-                                {item.name ?? "Unknown restaurant"}
-                              </h3>
-                              <div className="flex items-center gap-4 mt-1 flex-wrap">
-                                <RatingStars rating={item.rating} count={item.user_ratings_total} />
-                                {/* Distance - show if available */}
-                                {item.distance_miles && (
-                                  <span className="text-sm text-muted-foreground">
-                                    {item.distance_miles.toFixed(1)} mi away
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            {showCallStatus && getStatusBadge(callStatus, item.result)}
-                          </div>
+                {/* STATE: Found (not started) - Show "Check Availability" */}
+                {isReady && (
+                  <>
+                    <Button
+                      onClick={handleCheckAvailability}
+                      disabled={isStartingCalls || authLoading}
+                      className="w-full h-14 text-lg font-semibold bg-white text-red-700 hover:bg-white/90 shadow-lg"
+                    >
+                      {isStartingCalls ? (
+                        <>
+                          <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
+                          Starting Calls...
+                        </>
+                      ) : authLoading ? (
+                        <>
+                          <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
+                          Loading...
+                        </>
+                      ) : user ? (
+                        <>
+                          <Phone className="h-5 w-5 mr-2" />
+                          Check Availability at {items.length} Restaurant{items.length > 1 ? "s" : ""}
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="h-5 w-5 mr-2" />
+                          Sign Up to Check Availability
+                        </>
+                      )}
+                    </Button>
+                    {!user && !authLoading && (
+                      <p className="text-center text-white/80 text-sm mt-2">
+                        Free to create an account • Only pay when you book
+                      </p>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
-                          {/* Address */}
-                          {item.address && (
-                            <div className="flex items-center gap-1.5 mt-2 text-sm text-muted-foreground">
-                              <MapPin className="h-3.5 w-3.5 shrink-0" />
-                              <span className="truncate">{item.address}</span>
-                            </div>
-                          )}
+          {error && (
+            <Card className="border-red-200 bg-red-50">
+              <CardContent className="flex items-center gap-3 py-4">
+                <AlertCircle className="h-5 w-5 text-red-500" />
+                <span className="text-sm text-red-700">{error}</span>
+              </CardContent>
+            </Card>
+          )}
 
-                          {/* Types */}
-                          {item.types && item.types.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 mt-3">
-                              {item.types.slice(0, 4).map((type) => (
-                                <Badge
-                                  key={type}
-                                  variant="secondary"
-                                  className="text-xs bg-red-50 text-red-700 border border-red-200 hover:bg-red-100"
-                                >
-                                  {type.replace(/_/g, " ")}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* Call result - only after calls */}
-                          {showCallStatus && item.result && (
-                            <div className="mt-4">
-                              {getOutcomeMessage(item.result)}
-                            </div>
-                          )}
-                        </div>
+          {/* Restaurant list - hidden during calls to reduce clutter */}
+          {!isCalling && (
+            <div className="grid gap-4">
+              {items.length === 0 ? (
+                <Card className="border-0 shadow-md">
+                  <CardContent className="flex flex-col items-center justify-center gap-4 py-16">
+                    <div className="relative">
+                      <div className="absolute inset-0 rounded-full bg-red-500/20 animate-ping" />
+                      <div className="relative rounded-full bg-gradient-to-r from-red-500 to-orange-500 p-4">
+                        <RefreshCw className="h-6 w-6 text-white animate-spin" />
                       </div>
-                    </CardContent>
-                  </Card>
-                )
-              })
-            )}
-          </div>
-        )}
+                    </div>
+                    <div className="text-center">
+                      <div className="font-semibold text-lg">Finding restaurants...</div>
+                      <div className="text-sm text-muted-foreground">Searching for the best matches</div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                items.map((item) => {
+                  const displayId = item.place_id ?? item.id ?? "unknown"
+                  const callStatus = item.status as CallStatus | undefined
+                  const showCallStatus = !isReady // Only show call status after calls started
 
-        {/* Paywall dialog */}
-        <Dialog open={paywallRequired} onOpenChange={setPaywallRequired}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-xl">Unlock Your Reservations</DialogTitle>
-              <DialogDescription>
-                Great news! We found availability at some restaurants.
-                Unlock to see which ones and let us secure your table.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button variant="outline" onClick={() => setPaywallRequired(false)}>
-                Maybe Later
-              </Button>
-              <Button
-                onClick={() => router.push("/app/unlock")}
-                className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
-              >
-                Unlock Results
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+                  return (
+                    <Card
+                      key={displayId}
+                      className={`border-0 shadow-md transition-all ${item.result?.outcome === "hold_confirmed"
+                        ? "bg-gradient-to-r from-green-50 to-emerald-50 ring-2 ring-green-300 shadow-green-100"
+                        : item.result?.outcome === "available"
+                          ? "bg-gradient-to-r from-green-50 to-teal-50 ring-1 ring-green-200"
+                          : item.status === "speaking"
+                            ? "bg-gradient-to-r from-blue-50 to-indigo-50 ring-1 ring-blue-200"
+                            : item.status === "calling"
+                              ? "bg-gradient-to-r from-amber-50 to-orange-50 ring-1 ring-amber-200"
+                              : "bg-white/80 backdrop-blur hover:shadow-lg transition-shadow"
+                        }`}
+                    >
+                      <CardContent className="p-6">
+                        <div className="flex items-start gap-4">
+                          {/* Status icon - only show during/after calls */}
+                          {showCallStatus && (
+                            <div className="pt-1">
+                              {getStatusIcon(callStatus)}
+                            </div>
+                          )}
+
+                          <div className="flex-1 min-w-0">
+                            {/* Header row */}
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-semibold text-lg truncate">
+                                  {item.name ?? "Unknown restaurant"}
+                                </h3>
+                                <div className="flex items-center gap-4 mt-1 flex-wrap">
+                                  <RatingStars rating={item.rating} count={item.user_ratings_total} />
+                                  {/* Distance - show if available */}
+                                  {item.distance_miles && (
+                                    <span className="text-sm text-muted-foreground">
+                                      {item.distance_miles.toFixed(1)} mi away
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              {showCallStatus && getStatusBadge(callStatus, item.result)}
+                            </div>
+
+                            {/* Address */}
+                            {item.address && (
+                              <div className="flex items-center gap-1.5 mt-2 text-sm text-muted-foreground">
+                                <MapPin className="h-3.5 w-3.5 shrink-0" />
+                                <span className="truncate">{item.address}</span>
+                              </div>
+                            )}
+
+                            {/* Types */}
+                            {item.types && item.types.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 mt-3">
+                                {item.types.slice(0, 4).map((type) => (
+                                  <Badge
+                                    key={type}
+                                    variant="secondary"
+                                    className="text-xs bg-red-50 text-red-700 border border-red-200 hover:bg-red-100"
+                                  >
+                                    {type.replace(/_/g, " ")}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Call result - only after calls */}
+                            {showCallStatus && item.result && (
+                              <div className="mt-4">
+                                {getOutcomeMessage(item.result)}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })
+              )}
+            </div>
+          )}
+
+          {/* Paywall dialog */}
+          <Dialog open={paywallRequired} onOpenChange={setPaywallRequired}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="text-xl">Unlock Your Reservations</DialogTitle>
+                <DialogDescription>
+                  Great news! We found availability at some restaurants.
+                  Unlock to see which ones and let us secure your table.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button variant="outline" onClick={() => setPaywallRequired(false)}>
+                  Maybe Later
+                </Button>
+                <Button
+                  onClick={() => router.push("/app/unlock")}
+                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
+                >
+                  Unlock Results
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
-    </div>
+    </>
   )
 }

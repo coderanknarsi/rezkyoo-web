@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
+import { AppHeader } from "@/components/AppHeader"
+import { useAuth } from "@/lib/auth-context"
+import { saveSearchToHistory } from "@/lib/search-history"
 
 // Generate time options in 15-minute intervals
 function generateTimeOptions() {
@@ -72,6 +75,7 @@ function getAvailableTimeOptions(selectedDate: string) {
 
 export default function SearchPage() {
   const router = useRouter()
+  const { user } = useAuth()
   const [cravingText, setCravingText] = React.useState("")
   const [location, setLocation] = React.useState("")
   const [userCoords, setUserCoords] = React.useState<{ lat: number; lng: number } | null>(null)
@@ -243,6 +247,19 @@ export default function SearchPage() {
         if (userCoords) {
           sessionStorage.setItem(`batch_${data.batchId}_userLocation`, JSON.stringify(userCoords))
         }
+
+        // Save search to history if user is logged in
+        if (user) {
+          saveSearchToHistory(user.uid, {
+            cravingText,
+            location,
+            partySize: partySize ? Number(partySize) : undefined,
+            date: date || undefined,
+            time: time || undefined,
+            batchId: data.batchId,
+          })
+        }
+
         router.push(`/app/batch/${data.batchId}`)
         return
       }
@@ -261,215 +278,218 @@ export default function SearchPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-red-50/30 via-white to-white dark:from-zinc-900 dark:via-zinc-950 dark:to-zinc-950 relative overflow-hidden">
-      {/* Background decorations */}
-      <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-red-400/10 blur-3xl" />
-      <div className="absolute top-1/2 -left-40 h-80 w-80 rounded-full bg-orange-400/10 blur-3xl" />
+    <>
+      <AppHeader />
+      <div className="min-h-screen bg-gradient-to-b from-red-50/30 via-white to-white dark:from-zinc-900 dark:via-zinc-950 dark:to-zinc-950 relative overflow-hidden">
+        {/* Background decorations */}
+        <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-red-400/10 blur-3xl" />
+        <div className="absolute top-1/2 -left-40 h-80 w-80 rounded-full bg-orange-400/10 blur-3xl" />
 
-      <div className="relative mx-auto flex w-full max-w-2xl flex-col gap-8 px-6 py-16">
-        {/* Header */}
-        <div className="text-center space-y-3">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Find Your Perfect Table
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            Tell us what you're craving and we'll call restaurants for you
-          </p>
-        </div>
+        <div className="relative mx-auto flex w-full max-w-2xl flex-col gap-8 px-6 py-16">
+          {/* Header */}
+          <div className="text-center space-y-3">
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+              Find Your Perfect Table
+            </h1>
+            <p className="text-muted-foreground text-lg">
+              Tell us what you're craving and we'll call restaurants for you
+            </p>
+          </div>
 
-        {/* Main Form Card */}
-        <Card className="border-0 shadow-xl bg-white/80 backdrop-blur dark:bg-zinc-900/80">
-          <CardContent className="pt-8 pb-6">
-            <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
-              {/* Craving */}
-              <div className="grid gap-2">
-                <label className="text-sm font-semibold text-red-600" htmlFor="cravingText">
-                  What are you craving?
-                </label>
-                <Input
-                  id="cravingText"
-                  value={cravingText}
-                  onChange={(event) => setCravingText(event.target.value)}
-                  placeholder="Sushi, Italian, steakhouse..."
-                  required
-                  className="h-12 text-base border-zinc-200 focus:border-red-400 focus:ring-red-400"
-                />
-              </div>
-
-              {/* Location */}
-              <div className="grid gap-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-semibold text-red-600" htmlFor="location">
-                    Location
-                  </label>
-                  {/* Prominent "Use my location" button */}
-                  <button
-                    type="button"
-                    onClick={handleGetLocation}
-                    disabled={gettingLocation}
-                    className="flex items-center gap-1.5 text-sm text-red-600 hover:text-red-700 disabled:opacity-50 transition-colors"
-                  >
-                    <MapPin className={`h-4 w-4 ${gettingLocation ? "animate-pulse" : ""}`} />
-                    {gettingLocation ? "Finding you..." : "Use my location"}
-                  </button>
-                </div>
-                <Input
-                  id="location"
-                  value={location}
-                  onChange={(event) => setLocation(event.target.value)}
-                  placeholder="City, neighborhood, or address"
-                  required
-                  className="h-12 text-base border-zinc-200 focus:border-red-400 focus:ring-red-400"
-                />
-                {locationError && (
-                  <p className="text-xs text-red-500">{locationError}</p>
-                )}
-              </div>
-
-              {/* Party size & Date in a row */}
-              <div className="grid grid-cols-2 gap-4">
+          {/* Main Form Card */}
+          <Card className="border-0 shadow-xl bg-white/80 backdrop-blur dark:bg-zinc-900/80">
+            <CardContent className="pt-8 pb-6">
+              <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
+                {/* Craving */}
                 <div className="grid gap-2">
-                  <label className="text-sm font-semibold text-red-600" htmlFor="partySize">
-                    Party size
+                  <label className="text-sm font-semibold text-red-600" htmlFor="cravingText">
+                    What are you craving?
                   </label>
                   <Input
-                    id="partySize"
-                    type="number"
-                    min={1}
-                    max={20}
-                    value={partySize}
-                    onChange={(event) => setPartySize(event.target.value)}
-                    placeholder="2"
+                    id="cravingText"
+                    value={cravingText}
+                    onChange={(event) => setCravingText(event.target.value)}
+                    placeholder="Sushi, Italian, steakhouse..."
+                    required
                     className="h-12 text-base border-zinc-200 focus:border-red-400 focus:ring-red-400"
                   />
                 </div>
+
+                {/* Location */}
                 <div className="grid gap-2">
-                  <label className="text-sm font-semibold text-red-600" htmlFor="date">
-                    Date
-                  </label>
-                  <div
-                    onClick={handleDateContainerClick}
-                    className="relative cursor-pointer"
-                  >
-                    <input
-                      ref={dateInputRef}
-                      id="date"
-                      type="date"
-                      value={date}
-                      min={getTodayDate()}
-                      onChange={(event) => setDate(event.target.value)}
-                      className="flex h-12 w-full rounded-md border border-zinc-200 bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-semibold text-red-600" htmlFor="location">
+                      Location
+                    </label>
+                    {/* Prominent "Use my location" button */}
+                    <button
+                      type="button"
+                      onClick={handleGetLocation}
+                      disabled={gettingLocation}
+                      className="flex items-center gap-1.5 text-sm text-red-600 hover:text-red-700 disabled:opacity-50 transition-colors"
+                    >
+                      <MapPin className={`h-4 w-4 ${gettingLocation ? "animate-pulse" : ""}`} />
+                      {gettingLocation ? "Finding you..." : "Use my location"}
+                    </button>
+                  </div>
+                  <Input
+                    id="location"
+                    value={location}
+                    onChange={(event) => setLocation(event.target.value)}
+                    placeholder="City, neighborhood, or address"
+                    required
+                    className="h-12 text-base border-zinc-200 focus:border-red-400 focus:ring-red-400"
+                  />
+                  {locationError && (
+                    <p className="text-xs text-red-500">{locationError}</p>
+                  )}
+                </div>
+
+                {/* Party size & Date in a row */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <label className="text-sm font-semibold text-red-600" htmlFor="partySize">
+                      Party size
+                    </label>
+                    <Input
+                      id="partySize"
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={partySize}
+                      onChange={(event) => setPartySize(event.target.value)}
+                      placeholder="2"
+                      className="h-12 text-base border-zinc-200 focus:border-red-400 focus:ring-red-400"
                     />
                   </div>
-                </div>
-              </div>
-
-              {/* Time - Quick Select Buttons */}
-              <div className="grid gap-3">
-                <label className="text-sm font-semibold text-red-600">
-                  Time
-                </label>
-
-                {/* Quick select time buttons - prime dinner hours */}
-                <div className="grid grid-cols-4 gap-2">
-                  {['17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00', '22:30'].map(t => {
-                    const opt = availableTimeOptions.find(o => o.value === t)
-                    if (!opt) return null // Skip if time is in the past
-
-                    const isSelected = time === t
-                    return (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => setTime(t)}
-                        className={`py-2.5 px-2 text-sm font-medium rounded-lg border transition-all ${isSelected
-                          ? 'bg-red-500 text-white border-red-500 shadow-md'
-                          : 'bg-white text-zinc-700 border-zinc-200 hover:border-red-300 hover:bg-red-50'
-                          }`}
-                      >
-                        {opt.label}
-                      </button>
-                    )
-                  })}
+                  <div className="grid gap-2">
+                    <label className="text-sm font-semibold text-red-600" htmlFor="date">
+                      Date
+                    </label>
+                    <div
+                      onClick={handleDateContainerClick}
+                      className="relative cursor-pointer"
+                    >
+                      <input
+                        ref={dateInputRef}
+                        id="date"
+                        type="date"
+                        value={date}
+                        min={getTodayDate()}
+                        onChange={(event) => setDate(event.target.value)}
+                        className="flex h-12 w-full rounded-md border border-zinc-200 bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                {/* "Other time" expandable section */}
-                <details className="group">
-                  <summary className="text-sm text-zinc-500 cursor-pointer hover:text-red-600 transition-colors">
-                    Need a different time? <span className="group-open:hidden">Show all...</span>
-                  </summary>
-                  <select
-                    id="time"
-                    value={time}
-                    onChange={(event) => setTime(event.target.value)}
-                    className="mt-2 flex h-11 w-full rounded-md border border-zinc-200 bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2"
-                  >
-                    <option value="">Select a time</option>
-                    {availableTimeOptions.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </details>
+                {/* Time - Quick Select Buttons */}
+                <div className="grid gap-3">
+                  <label className="text-sm font-semibold text-red-600">
+                    Time
+                  </label>
 
-                {date === getTodayDate() && availableTimeOptions.length < ALL_TIME_OPTIONS.length && (
-                  <p className="text-xs text-muted-foreground">
-                    Only showing times at least 30 min from now
-                  </p>
-                )}
-              </div>
+                  {/* Quick select time buttons - prime dinner hours */}
+                  <div className="grid grid-cols-4 gap-2">
+                    {['17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00', '22:30'].map(t => {
+                      const opt = availableTimeOptions.find(o => o.value === t)
+                      if (!opt) return null // Skip if time is in the past
 
-              {/* Submit Button */}
-              <Button
-                type="submit"
-                disabled={loading}
-                className="h-14 text-lg font-semibold bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg shadow-red-500/25"
-              >
-                {loading ? (
-                  <span className="flex items-center gap-2">
-                    <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    Searching...
-                  </span>
-                ) : (
-                  "Find Tables"
-                )}
-              </Button>
+                      const isSelected = time === t
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setTime(t)}
+                          className={`py-2.5 px-2 text-sm font-medium rounded-lg border transition-all ${isSelected
+                            ? 'bg-red-500 text-white border-red-500 shadow-md'
+                            : 'bg-white text-zinc-700 border-zinc-200 hover:border-red-300 hover:bg-red-50'
+                            }`}
+                        >
+                          {opt.label}
+                        </button>
+                      )
+                    })}
+                  </div>
 
-              {/* Trust text */}
-              <p className="text-center text-xs text-muted-foreground">
-                🔒 We'll call restaurants on your behalf. No hidden fees.
-              </p>
-            </form>
-          </CardContent>
-        </Card>
+                  {/* "Other time" expandable section */}
+                  <details className="group">
+                    <summary className="text-sm text-zinc-500 cursor-pointer hover:text-red-600 transition-colors">
+                      Need a different time? <span className="group-open:hidden">Show all...</span>
+                    </summary>
+                    <select
+                      id="time"
+                      value={time}
+                      onChange={(event) => setTime(event.target.value)}
+                      className="mt-2 flex h-11 w-full rounded-md border border-zinc-200 bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2"
+                    >
+                      <option value="">Select a time</option>
+                      {availableTimeOptions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </details>
 
-        {/* Error display */}
-        {error && (
-          <Card className="border-red-200 bg-red-50">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-red-600 text-lg">Search error</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-red-700">
-              {error}
+                  {date === getTodayDate() && availableTimeOptions.length < ALL_TIME_OPTIONS.length && (
+                    <p className="text-xs text-muted-foreground">
+                      Only showing times at least 30 min from now
+                    </p>
+                  )}
+                </div>
+
+                {/* Submit Button */}
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="h-14 text-lg font-semibold bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg shadow-red-500/25"
+                >
+                  {loading ? (
+                    <span className="flex items-center gap-2">
+                      <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      Searching...
+                    </span>
+                  ) : (
+                    "Find Tables"
+                  )}
+                </Button>
+
+                {/* Trust text */}
+                <p className="text-center text-xs text-muted-foreground">
+                  🔒 We'll call restaurants on your behalf. No hidden fees.
+                </p>
+              </form>
             </CardContent>
           </Card>
-        )}
 
-        {/* Debug response (only in development) */}
-        {debugResponse && process.env.NODE_ENV === 'development' && (
-          <Card className="border-zinc-200">
-            <CardHeader>
-              <CardTitle className="text-sm text-muted-foreground">Debug response</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <pre className="whitespace-pre-wrap text-xs text-muted-foreground overflow-auto max-h-40">
-                {JSON.stringify(debugResponse, null, 2)}
-              </pre>
-            </CardContent>
-          </Card>
-        )}
+          {/* Error display */}
+          {error && (
+            <Card className="border-red-200 bg-red-50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-red-600 text-lg">Search error</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-red-700">
+                {error}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Debug response (only in development) */}
+          {debugResponse && process.env.NODE_ENV === 'development' && (
+            <Card className="border-zinc-200">
+              <CardHeader>
+                <CardTitle className="text-sm text-muted-foreground">Debug response</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <pre className="whitespace-pre-wrap text-xs text-muted-foreground overflow-auto max-h-40">
+                  {JSON.stringify(debugResponse, null, 2)}
+                </pre>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   )
 }
