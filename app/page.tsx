@@ -18,9 +18,9 @@ export default function Home() {
             <Image
               src="/rezkyoo-logo-horizontal-transparent.png"
               alt="RezKyoo"
-              width={240}
-              height={60}
-              className="h-12 w-auto"
+              width={280}
+              height={70}
+              className="h-16 w-auto"
               priority
             />
           </Link>
@@ -315,7 +315,7 @@ export default function Home() {
             <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-6 text-sm text-zinc-500 dark:text-zinc-400">
               <Link href="#" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Privacy Policy</Link>
               <Link href="#" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Terms of Service</Link>
-              <Link href="#" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Contact Us</Link>
+              <Link href="/contact" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Contact Us</Link>
             </div>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
               © {currentYear} RezKyoo. AI Calls. Real Tables.
