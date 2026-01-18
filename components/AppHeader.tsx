@@ -39,15 +39,18 @@ export function AppHeader() {
     const userEmail = user?.email || ""
 
     return (
-        <header className="sticky top-0 z-50 w-full border-b border-zinc-200 bg-white/80 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/80">
+        <header className="sticky top-0 z-50 w-full border-b border-zinc-200/50 bg-white/90 backdrop-blur-md dark:border-zinc-800/50 dark:bg-zinc-950/90">
             <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
-                {/* Logo */}
+                {/* Logo - links to search page */}
                 <Link
-                    href="/app"
-                    className="flex items-center gap-2 font-bold text-lg text-red-600 hover:text-red-700 transition-colors"
+                    href="/app/search"
+                    className="flex items-center gap-2 font-bold text-lg text-red-600 hover:text-red-700 transition-colors hover:opacity-80"
                 >
-                    <span className="text-2xl">🍽️</span>
-                    <span>Rez Q</span>
+                    <img
+                        src="/rezkyoo-logo-horizontal-transparent.png"
+                        alt="RezKyoo"
+                        className="h-8 w-auto"
+                    />
                 </Link>
 
                 {/* Right side */}

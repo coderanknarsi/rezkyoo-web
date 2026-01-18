@@ -16,11 +16,11 @@ export default function Home() {
         <div className="mx-auto flex h-24 max-w-6xl items-center justify-between px-6">
           <Link href="/" className="flex items-center">
             <Image
-              src="/logo-main.jpg"
+              src="/rezkyoo-logo-horizontal-transparent.png"
               alt="RezKyoo"
               width={240}
               height={60}
-              className="h-14 w-auto"
+              className="h-12 w-auto"
               priority
             />
           </Link>
@@ -305,11 +305,11 @@ export default function Home() {
           <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
             <Link href="/" className="flex items-center">
               <Image
-                src="/logo-main.jpg"
+                src="/rezkyoo-logo-horizontal-transparent.png"
                 alt="RezKyoo"
                 width={160}
                 height={40}
-                className="h-10 w-auto"
+                className="h-8 w-auto"
               />
             </Link>
             <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-6 text-sm text-zinc-500 dark:text-zinc-400">
