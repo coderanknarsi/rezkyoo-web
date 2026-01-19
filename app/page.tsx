@@ -41,14 +41,14 @@ export default function Home() {
                 AI-Powered Restaurant Reservations
               </div>
               <h1 className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-5xl lg:text-6xl">
-                Skip the hold music.
+                Reservations,
                 <br />
                 <span className="bg-gradient-to-r from-red-500 to-red-600 bg-clip-text text-transparent">
-                  Let AI call for you.
+                  reinvented.
                 </span>
               </h1>
               <p className="mt-6 max-w-xl text-lg leading-8 text-zinc-600 dark:text-zinc-400 mx-auto lg:mx-0">
-                RezKyoo calls restaurants on your behalf to check availability and secure reservations.
+                AI calls restaurants so you don't have to.
                 No more waiting on hold or playing phone tag.
               </p>
               <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row lg:justify-start">
@@ -318,7 +318,7 @@ export default function Home() {
               <Link href="/contact" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Contact Us</Link>
             </div>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              © {currentYear} RezKyoo. AI Calls. Real Tables.
+              © {currentYear} RezKyoo. Your personal reservation concierge.
             </p>
           </div>
         </div>
