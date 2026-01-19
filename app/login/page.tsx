@@ -23,7 +23,7 @@ export default function LoginPage() {
     // Redirect if already logged in
     React.useEffect(() => {
         if (user && !loading) {
-            router.push("/app")
+            router.push("/app/search")
         }
     }, [user, loading, router])
 
@@ -34,7 +34,7 @@ export default function LoginPage() {
 
         try {
             await signIn(email, password)
-            router.push("/app")
+            router.push("/app/search")
         } catch (err: any) {
             setError(err.message || "Failed to sign in")
         } finally {
@@ -48,7 +48,7 @@ export default function LoginPage() {
 
         try {
             await signInWithGoogle()
-            router.push("/app")
+            router.push("/app/search")
         } catch (err: any) {
             setError(err.message || "Failed to sign in with Google")
         } finally {

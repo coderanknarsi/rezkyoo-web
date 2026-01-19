@@ -44,7 +44,7 @@ export default function Home() {
                 Reservations,
                 <br />
                 <span className="bg-gradient-to-r from-red-500 to-red-600 bg-clip-text text-transparent">
-                  reinvented.
+                  Reinvented.
                 </span>
               </h1>
               <p className="mt-6 max-w-xl text-lg leading-8 text-zinc-600 dark:text-zinc-400 mx-auto lg:mx-0">
@@ -314,7 +314,7 @@ export default function Home() {
             </Link>
             <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-6 text-sm text-zinc-500 dark:text-zinc-400">
               <Link href="#" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Privacy Policy</Link>
-              <Link href="#" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Terms of Service</Link>
+              <Link href="/terms" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Terms of Service</Link>
               <Link href="/contact" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Contact Us</Link>
             </div>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">

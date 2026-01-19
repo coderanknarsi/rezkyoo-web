@@ -1,28 +1,6 @@
-import Link from "next/link"
-
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { AppHeader } from "@/components/AppHeader"
+import { redirect } from "next/navigation"
 
 export default function AppHomePage() {
-  return (
-    <>
-      <AppHeader />
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-16">
-        <Card>
-          <CardHeader>
-            <CardTitle>RezKyoo App</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <p className="text-muted-foreground">
-              Search for restaurants and queue booking calls.
-            </p>
-            <Button asChild className="w-fit">
-              <Link href="/app/search">Go to search</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    </>
-  )
+  // Redirect to search page - no need for an intermediate landing page
+  redirect("/app/search")
 }

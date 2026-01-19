@@ -24,7 +24,7 @@ export default function SignupPage() {
     // Redirect if already logged in
     React.useEffect(() => {
         if (user && !loading) {
-            router.push("/app")
+            router.push("/app/search")
         }
     }, [user, loading, router])
 
@@ -46,7 +46,7 @@ export default function SignupPage() {
 
         try {
             await signUp(email, password)
-            router.push("/app")
+            router.push("/app/search")
         } catch (err: any) {
             setError(err.message || "Failed to create account")
         } finally {
@@ -60,7 +60,7 @@ export default function SignupPage() {
 
         try {
             await signInWithGoogle()
-            router.push("/app")
+            router.push("/app/search")
         } catch (err: any) {
             setError(err.message || "Failed to sign up with Google")
         } finally {
