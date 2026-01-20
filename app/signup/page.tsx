@@ -4,13 +4,14 @@ import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { Mail, Lock } from "lucide-react"
+import { Mail, Lock, Phone } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/lib/auth-context"
+import { saveUserProfile, isValidPhoneNumber } from "@/lib/user-profile"
 
 export default function SignupPage() {
     const router = useRouter()
@@ -18,6 +19,7 @@ export default function SignupPage() {
     const [email, setEmail] = React.useState("")
     const [password, setPassword] = React.useState("")
     const [confirmPassword, setConfirmPassword] = React.useState("")
+    const [phoneNumber, setPhoneNumber] = React.useState("")
     const [error, setError] = React.useState<string | null>(null)
     const [isLoading, setIsLoading] = React.useState(false)
 
@@ -45,7 +47,18 @@ export default function SignupPage() {
         setIsLoading(true)
 
         try {
-            await signUp(email, password)
+            const userCredential = await signUp(email, password)
+
+            // Save user profile with phone number to Firestore
+            if (userCredential?.user) {
+                await saveUserProfile(userCredential.user.uid, {
+                    email: email,
+                    displayName: null,
+                    phoneNumber: phoneNumber || null,
+                    smsNotifications: true,
+                })
+            }
+
             router.push("/app/search")
         } catch (err: any) {
             setError(err.message || "Failed to create account")
@@ -162,6 +175,23 @@ export default function SignupPage() {
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         required
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label htmlFor="phone" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                                    Phone Number <span className="text-zinc-400 font-normal">(for reservations)</span>
+                                </label>
+                                <div className="relative">
+                                    <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                                    <Input
+                                        id="phone"
+                                        type="tel"
+                                        placeholder="(555) 123-4567"
+                                        className="pl-10 h-11 border-zinc-300 focus:border-red-500 focus:ring-red-500"
+                                        value={phoneNumber}
+                                        onChange={(e) => setPhoneNumber(e.target.value)}
                                     />
                                 </div>
                             </div>

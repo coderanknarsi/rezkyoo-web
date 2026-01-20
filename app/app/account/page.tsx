@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { ArrowLeft, User, Mail, Calendar, CreditCard, History } from "lucide-react"
+import { ArrowLeft, User, Mail, Calendar, CreditCard, History, Phone } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,12 +10,30 @@ import { Input } from "@/components/ui/input"
 import { AppHeader } from "@/components/AppHeader"
 import { useAuth } from "@/lib/auth-context"
 import { updateProfile } from "firebase/auth"
+import { getUserProfile, saveUserProfile, formatPhoneNumber } from "@/lib/user-profile"
 
 export default function AccountPage() {
     const { user, loading } = useAuth()
     const [displayName, setDisplayName] = React.useState("")
+    const [phoneNumber, setPhoneNumber] = React.useState("")
     const [saving, setSaving] = React.useState(false)
     const [message, setMessage] = React.useState<{ type: "success" | "error"; text: string } | null>(null)
+
+    // Fetch user profile from Firestore
+    React.useEffect(() => {
+        async function fetchProfile() {
+            if (!user) return
+            try {
+                const profile = await getUserProfile(user.uid)
+                if (profile?.phoneNumber) {
+                    setPhoneNumber(profile.phoneNumber)
+                }
+            } catch (err) {
+                console.error("Error fetching profile:", err)
+            }
+        }
+        fetchProfile()
+    }, [user])
 
     React.useEffect(() => {
         if (user?.displayName) {
@@ -31,9 +49,18 @@ export default function AccountPage() {
         setMessage(null)
 
         try {
+            // Update Firebase Auth display name
             await updateProfile(user, { displayName })
+
+            // Update Firestore profile with phone number
+            await saveUserProfile(user.uid, {
+                displayName,
+                phoneNumber: phoneNumber || null,
+            })
+
             setMessage({ type: "success", text: "Profile updated successfully!" })
         } catch (error) {
+            console.error("Error updating profile:", error)
             setMessage({ type: "error", text: "Failed to update profile. Please try again." })
         } finally {
             setSaving(false)
@@ -125,6 +152,20 @@ export default function AccountPage() {
                                             onChange={(e) => setDisplayName(e.target.value)}
                                             placeholder="Enter your name"
                                         />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium flex items-center gap-2">
+                                            <Phone className="h-4 w-4 text-muted-foreground" />
+                                            Phone Number
+                                        </label>
+                                        <Input
+                                            type="tel"
+                                            value={phoneNumber}
+                                            onChange={(e) => setPhoneNumber(e.target.value)}
+                                            placeholder="(555) 123-4567"
+                                        />
+                                        <p className="text-xs text-muted-foreground">Used for restaurant reservations and SMS notifications</p>
                                     </div>
 
                                     {createdAt && (

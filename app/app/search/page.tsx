@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { MapPin } from "lucide-react"
+import { MapPin, Phone } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator"
 import { AppHeader } from "@/components/AppHeader"
 import { useAuth } from "@/lib/auth-context"
 import { saveSearchToHistory } from "@/lib/search-history"
+import { getUserProfile, saveUserProfile, isValidPhoneNumber } from "@/lib/user-profile"
 
 // Generate time options in 15-minute intervals
 function generateTimeOptions() {
@@ -87,6 +88,11 @@ export default function SearchPage() {
   const [debugResponse, setDebugResponse] = React.useState<any>(null)
   const [gettingLocation, setGettingLocation] = React.useState(false)
   const [locationError, setLocationError] = React.useState<string | null>(null)
+
+  // Phone number collection
+  const [phoneNumber, setPhoneNumber] = React.useState("")
+  const [hasPhoneSaved, setHasPhoneSaved] = React.useState(false)
+  const [loadingProfile, setLoadingProfile] = React.useState(true)
 
   const dateInputRef = React.useRef<HTMLInputElement>(null)
 
@@ -185,11 +191,43 @@ export default function SearchPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Run once on mount
 
+  // Fetch user profile to check if phone is saved
+  React.useEffect(() => {
+    async function fetchProfile() {
+      if (!user) {
+        setLoadingProfile(false)
+        return
+      }
+      try {
+        const profile = await getUserProfile(user.uid)
+        if (profile?.phoneNumber) {
+          setPhoneNumber(profile.phoneNumber)
+          setHasPhoneSaved(true)
+        }
+      } catch (err) {
+        console.error("Error fetching profile:", err)
+      } finally {
+        setLoadingProfile(false)
+      }
+    }
+    fetchProfile()
+  }, [user])
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setLoading(true)
     setError(null)
     setDebugResponse(null)
+
+    // If phone was entered and not yet saved, save it to profile
+    if (user && phoneNumber && !hasPhoneSaved && isValidPhoneNumber(phoneNumber)) {
+      try {
+        await saveUserProfile(user.uid, { phoneNumber })
+        setHasPhoneSaved(true)
+      } catch (err) {
+        console.error("Error saving phone:", err)
+      }
+    }
 
     // Validate date/time combination
     const today = getTodayDate()
@@ -438,6 +476,29 @@ export default function SearchPage() {
                     </p>
                   )}
                 </div>
+
+                {/* Phone Number - shown for logged-in users without saved phone */}
+                {user && !loadingProfile && !hasPhoneSaved && (
+                  <div className="grid gap-2 p-4 bg-red-50/50 dark:bg-red-900/10 rounded-lg border border-red-100 dark:border-red-900/20">
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-red-500" />
+                      <label className="text-sm font-semibold text-zinc-700 dark:text-zinc-300" htmlFor="phone">
+                        Your phone number <span className="text-zinc-400 font-normal">(for reservations)</span>
+                      </label>
+                    </div>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      placeholder="(555) 123-4567"
+                      className="h-11 border-zinc-200 focus:border-red-400 focus:ring-red-400"
+                    />
+                    <p className="text-xs text-zinc-500">
+                      Restaurants need this to hold your table. We'll save it to your profile.
+                    </p>
+                  </div>
+                )}
 
                 {/* Submit Button */}
                 <Button
