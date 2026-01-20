@@ -77,27 +77,85 @@ function getStatusIcon(status?: CallStatus) {
   }
 }
 
-function getStatusBadge(status?: CallStatus, result?: CallResult) {
-  if (status === "calling") {
-    return <Badge className="bg-amber-100 text-amber-700 border-amber-300 animate-pulse">Calling...</Badge>
-  }
+function getStatusBadge(status?: CallStatus, result?: CallResult, hideOutcome?: boolean) {
+  // Speaking - YELLOW animated
   if (status === "speaking") {
-    return <Badge className="bg-blue-100 text-blue-700 border-blue-300 animate-pulse">Speaking with staff...</Badge>
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-400 text-yellow-900 shadow-sm animate-pulse">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-600 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-600"></span>
+        </span>
+        Speaking...
+      </span>
+    )
   }
-  if (status === "completed" && result?.outcome === "hold_confirmed") {
-    return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300">Hold Confirmed ✓</Badge>
+  // Calling - ORANGE pulsing
+  if (status === "calling") {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-400 text-orange-900 shadow-sm animate-pulse">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-600 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-600"></span>
+        </span>
+        Calling...
+      </span>
+    )
   }
-  if (status === "completed" && result?.outcome === "available") {
-    return <Badge className="bg-blue-100 text-blue-700 border-blue-300">Available</Badge>
+  // Completed - Show neutral "Done" if outcome should be hidden (before payment)
+  if (status === "completed") {
+    if (hideOutcome) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-zinc-200 text-zinc-600 shadow-sm">
+          Done <Check className="h-3 w-3" />
+        </span>
+      )
+    }
+    // After payment - show actual outcome
+    if (result?.outcome === "hold_confirmed" || result?.outcome === "available") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-500 text-white shadow-sm">
+          Available <Check className="h-3 w-3" />
+        </span>
+      )
+    }
+    if (result?.outcome === "not_available") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 shadow-sm">
+          Unavailable
+        </span>
+      )
+    }
+    // Fallback for completed without clear outcome
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-zinc-200 text-zinc-700 shadow-sm">
+        Done <Check className="h-3 w-3" />
+      </span>
+    )
   }
-  if (status === "completed" && result?.outcome === "not_available") {
-    return <Badge className="bg-zinc-100 text-zinc-600 border-zinc-300">Not Available</Badge>
-  }
-  if (status === "skipped") {
-    return <Badge className="bg-zinc-100 text-zinc-500 border-zinc-200">Skipped</Badge>
-  }
+  // No Answer / Failed - GRAY with X (neutral, doesn't reveal result)
   if (status === "failed" || status === "no_answer" || status === "error") {
-    return <Badge className="bg-red-100 text-red-700 border-red-300">Failed</Badge>
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-zinc-200 text-zinc-600 shadow-sm">
+        Done <Check className="h-3 w-3" />
+      </span>
+    )
+  }
+  // Queued/Pending - GRAY outline
+  if (status === "pending" || !status) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border border-zinc-300 text-zinc-500">
+        Queued
+      </span>
+    )
+  }
+  // Skipped
+  if (status === "skipped") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-zinc-100 text-zinc-500">
+        Skipped
+      </span>
+    )
   }
   return null
 }
@@ -469,7 +527,7 @@ export default function BatchStatusPage() {
               )}
             </CardHeader>
             <CardContent>
-              {/* DYNAMIC MAP - show during calls (lazy-loaded) */}
+              {/* SPLIT VIEW DURING CALLS - Map left, Restaurant cards right */}
               {isCalling && userLocation && items.length > 0 && (() => {
                 // Find active restaurant for highlight
                 const activeItem = items.find(i =>
@@ -478,19 +536,79 @@ export default function BatchStatusPage() {
                 const activeRestaurantId = activeItem?.id || activeItem?.place_id || null
 
                 return (
-                  <div className="mb-6">
-                    <DynamicCallMap
-                      renderPhase="process"
-                      center={userLocation}
-                      userLocation={userLocation}
-                      activeRestaurantId={activeRestaurantId}
-                      restaurants={items.filter(item => item.lat && item.lng).map(item => ({
-                        id: item.id || item.place_id || item.name || '',
-                        name: item.name || 'Unknown',
-                        lat: item.lat!,
-                        lng: item.lng!,
-                      }))}
-                    />
+                  <div className="flex flex-col lg:flex-row gap-4">
+                    {/* Left: Map */}
+                    <div className="lg:w-3/5 relative">
+                      <DynamicCallMap
+                        renderPhase="process"
+                        center={userLocation}
+                        userLocation={userLocation}
+                        activeRestaurantId={activeRestaurantId}
+                        restaurants={items.filter(item => item.lat && item.lng).map((item, idx) => ({
+                          id: item.id || item.place_id || item.name || '',
+                          name: item.name || 'Unknown',
+                          lat: item.lat!,
+                          lng: item.lng!,
+                          index: idx + 1,
+                        }))}
+                      />
+                      {/* Floating "Speaking with staff..." indicator on map */}
+                      {activeItem && activeItem.status === "speaking" && (
+                        <div className="absolute bottom-4 left-4 bg-yellow-400 text-yellow-900 px-3 py-2 rounded-lg shadow-lg text-sm font-medium animate-pulse flex items-center gap-2">
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-600 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-600"></span>
+                          </span>
+                          Speaking with staff...
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right: Restaurant status cards */}
+                    <div className="lg:w-2/5 space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                      {items.map((item, idx) => {
+                        const callStatus = item.status as CallStatus | undefined
+                        const isActive = callStatus === "calling" || callStatus === "speaking"
+
+                        return (
+                          <div
+                            key={item.place_id || item.id || idx}
+                            className={`p-3 rounded-lg border transition-all ${isActive
+                              ? "bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-300 shadow-md"
+                              : item.result?.outcome === "hold_confirmed" || item.result?.outcome === "available"
+                                ? "bg-green-50 border-green-200"
+                                : "bg-white border-zinc-200"
+                              }`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                {/* Number badge */}
+                                <span className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isActive
+                                  ? "bg-orange-500 text-white"
+                                  : "bg-zinc-200 text-zinc-600"
+                                  }`}>
+                                  {idx + 1}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <div className="font-medium text-sm truncate">{item.name}</div>
+                                  <div className="flex items-center gap-1.5">
+                                    <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
+                                    <span className="text-xs text-zinc-600">{item.rating?.toFixed(1) || "N/A"}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              {/* Status badge - hide outcome until payment */}
+                              <div className="shrink-0">
+                                {getStatusBadge(callStatus, item.result, true)}
+                              </div>
+                              {/* Phone icon */}
+                              <Phone className={`shrink-0 h-4 w-4 ${isActive ? "text-orange-500 animate-pulse" : "text-zinc-300"
+                                }`} />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
                 )
               })()}
@@ -697,7 +815,7 @@ export default function BatchStatusPage() {
                                   )}
                                 </div>
                               </div>
-                              {showCallStatus && getStatusBadge(callStatus, item.result)}
+                              {showCallStatus && getStatusBadge(callStatus, item.result, true)}
                             </div>
 
                             {/* Address */}

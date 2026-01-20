@@ -71,21 +71,20 @@ export function DynamicCallMap({
                 // Bounds to fit all markers
                 const bounds = new google.maps.LatLngBounds()
 
-                // User location marker - MUCH MORE PROMINENT with "You" label
+                // User location marker - pulsing orange dot (matches brand)
                 if (userLocation) {
                     bounds.extend(userLocation)
                     const userEl = document.createElement("div")
-                    userEl.className = "relative flex flex-col items-center"
+                    userEl.className = "relative flex items-center justify-center"
                     userEl.innerHTML = `
                         <div class="relative">
-                            <div class="w-10 h-10 bg-blue-500 rounded-full border-4 border-white shadow-xl flex items-center justify-center z-10 relative">
-                                <span class="text-white font-bold text-xs">U</span>
+                            <!-- Outer pulse rings - hot orange/red -->
+                            <div class="absolute -inset-6 bg-orange-500/15 rounded-full animate-pulse"></div>
+                            <div class="absolute -inset-4 bg-orange-400/25 rounded-full animate-ping" style="animation-duration: 1.5s;"></div>
+                            <div class="absolute -inset-2 bg-orange-500/35 rounded-full animate-pulse" style="animation-duration: 1s;"></div>
+                            <!-- Main dot - fiery gradient -->
+                            <div class="w-4 h-4 rounded-full border-2 border-white shadow-lg z-10 relative" style="background: linear-gradient(135deg, #ff6b35 0%, #f7931e 50%, #ff4500 100%); box-shadow: 0 0 12px rgba(255, 107, 53, 0.6), 0 0 24px rgba(255, 107, 53, 0.3);">
                             </div>
-                            <div class="absolute inset-0 w-10 h-10 bg-blue-500 rounded-full animate-ping opacity-40"></div>
-                            <div class="absolute -inset-3 bg-blue-400/20 rounded-full animate-pulse"></div>
-                        </div>
-                        <div class="mt-1 bg-blue-600 text-white text-xs font-semibold px-2 py-0.5 rounded-full shadow-md whitespace-nowrap">
-                            You are here
                         </div>
                     `
                     new AdvancedMarkerElement({
