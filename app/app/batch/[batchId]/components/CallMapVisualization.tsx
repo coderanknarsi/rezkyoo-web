@@ -342,7 +342,7 @@ export function CallMapVisualization({ userLat, userLng, restaurants, mapUrl, is
                         <div className="bg-black/60 backdrop-blur-sm rounded-lg px-4 py-2 text-center">
                             {activeRestaurant ? (
                                 <p className="text-white text-sm">
-                                    Calling restaurants one at a time...
+                                    Calling all restaurants simultaneously...
                                 </p>
                             ) : completed > 0 ? (
                                 <p className="text-white text-sm">

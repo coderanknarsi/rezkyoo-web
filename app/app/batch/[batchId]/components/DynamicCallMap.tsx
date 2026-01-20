@@ -177,7 +177,7 @@ export function DynamicCallMap({
             {isLoaded && renderPhase === "process" && activeRestaurantId && (
                 <div className="absolute bottom-4 left-4 right-4">
                     <div className="bg-black/70 backdrop-blur-sm rounded-lg px-4 py-3 text-white text-center">
-                        <p className="text-sm">Calling restaurants one at a time...</p>
+                        <p className="text-sm">Calling all restaurants simultaneously...</p>
                     </div>
                 </div>
             )}
