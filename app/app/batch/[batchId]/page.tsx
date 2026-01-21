@@ -481,6 +481,13 @@ export default function BatchStatusPage() {
                     {isCalling && `${callingItems} calling, ${pendingItems} queued`}
                     {isCompleted && `${available} available out of ${totalItems} called`}
                   </p>
+                  {/* Info note about closed restaurants - only show in ready state */}
+                  {isReady && (
+                    <p className="text-xs text-muted-foreground/70 mt-1 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      Only showing restaurants that are currently open and staffed to answer calls
+                    </p>
+                  )}
                 </div>
                 {isCalling && (
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-100 text-red-700">
@@ -554,7 +561,7 @@ export default function BatchStatusPage() {
                       />
                       {/* Floating "Speaking with staff..." indicator on map */}
                       {activeItem && activeItem.status === "speaking" && (
-                        <div className="absolute bottom-4 left-4 bg-yellow-400 text-yellow-900 px-3 py-2 rounded-lg shadow-lg text-sm font-medium animate-pulse flex items-center gap-2">
+                        <div className="absolute top-4 left-4 bg-yellow-400 text-yellow-900 px-3 py-2 rounded-lg shadow-lg text-sm font-medium animate-pulse flex items-center gap-2 z-10">
                           <span className="relative flex h-2 w-2">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-600 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-600"></span>

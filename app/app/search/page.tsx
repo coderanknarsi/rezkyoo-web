@@ -81,7 +81,7 @@ export default function SearchPage() {
   const [location, setLocation] = React.useState("")
   const [userCoords, setUserCoords] = React.useState<{ lat: number; lng: number } | null>(null)
   const [partySize, setPartySize] = React.useState("")
-  const [date, setDate] = React.useState("")
+  const [date, setDate] = React.useState(getTodayDate()) // Default to today
   const [time, setTime] = React.useState("")
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
