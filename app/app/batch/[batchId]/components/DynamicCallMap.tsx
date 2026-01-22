@@ -188,17 +188,22 @@ export function DynamicCallMap({
 // Helper to style markers based on state - NOW WITH INDEX NUMBERS
 function updateMarkerStyle(el: HTMLElement, isActive: boolean, renderPhase: RenderPhase, index: number) {
     if (isActive) {
-        // Active call - pulsing amber with glow and number
+        // Active call - dramatic multi-ring ripple effect with numbered marker
         el.className = "relative flex flex-col items-center"
         el.innerHTML = `
             <div class="relative">
-                <div class="w-10 h-10 bg-amber-500 rounded-full border-3 border-white shadow-xl flex items-center justify-center z-10 relative">
-                    <span class="text-white font-bold text-sm">${index}</span>
+                <!-- Multiple expanding ripple rings for wow effect -->
+                <div class="absolute -inset-6 rounded-full border-2 border-amber-400/50 animate-ping" style="animation-duration: 1.5s;"></div>
+                <div class="absolute -inset-4 rounded-full border-2 border-amber-500/40 animate-ping" style="animation-duration: 1.5s; animation-delay: 0.3s;"></div>
+                <div class="absolute -inset-2 rounded-full border-2 border-amber-500/30 animate-ping" style="animation-duration: 1.5s; animation-delay: 0.6s;"></div>
+                <!-- Glowing background circle -->
+                <div class="absolute -inset-3 bg-amber-500/25 rounded-full animate-pulse"></div>
+                <!-- Main marker with number -->
+                <div class="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full border-3 border-white shadow-xl flex items-center justify-center z-10 relative">
+                    <span class="text-white font-bold text-sm drop-shadow">${index}</span>
                 </div>
-                <div class="absolute inset-0 w-10 h-10 bg-amber-400 rounded-full animate-ping"></div>
-                <div class="absolute -inset-3 bg-amber-500/30 rounded-full animate-pulse"></div>
             </div>
-            <div class="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-amber-500 -mt-1"></div>
+            <div class="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-orange-500 -mt-1"></div>
         `
     } else {
         // Queued/completed restaurants - numbered markers like Google Maps pins

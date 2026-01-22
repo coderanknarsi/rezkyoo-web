@@ -19,6 +19,7 @@ import { AppHeader } from "@/components/AppHeader"
 import { useAuth } from "@/lib/auth-context"
 import { CallMapVisualization } from "./components/CallMapVisualization"
 import { DynamicCallMap } from "./components/DynamicCallMap"
+import { DroppPayment } from "@/components/DroppPayment"
 
 const POLL_INTERVAL_MS = 5000 // 5 seconds during active calls
 
@@ -29,6 +30,119 @@ function formatTime12Hour(time24: string): string {
   const period = hours >= 12 ? 'PM' : 'AM'
   const hours12 = hours % 12 || 12
   return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`
+}
+
+// Format elapsed seconds as M:SS (e.g., "1:23")
+function formatElapsedTime(seconds: number): string {
+  const mins = Math.floor(seconds / 60)
+  const secs = seconds % 60
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
+
+// Live call timer component - updates every second
+function LiveCallTimer({ startedAt }: { startedAt?: number }) {
+  const [elapsed, setElapsed] = React.useState(0)
+
+  React.useEffect(() => {
+    if (!startedAt) return
+
+    // Calculate initial elapsed time
+    const updateElapsed = () => {
+      const now = Date.now()
+      setElapsed(Math.floor((now - startedAt) / 1000))
+    }
+
+    updateElapsed()
+    const interval = setInterval(updateElapsed, 1000)
+    return () => clearInterval(interval)
+  }, [startedAt])
+
+  if (!startedAt || elapsed < 0) return null
+
+  return (
+    <span className="text-xs text-orange-600 font-mono tabular-nums">
+      {formatElapsedTime(elapsed)}
+    </span>
+  )
+}
+
+// Live status badge with elapsed time for rotating stage text
+function LiveStatusBadge({ status, result, hideOutcome, startedAt }: {
+  status?: CallStatus
+  result?: CallResult
+  hideOutcome?: boolean
+  startedAt?: number
+}) {
+  const [elapsed, setElapsed] = React.useState(0)
+
+  React.useEffect(() => {
+    if (!startedAt || status !== "speaking") return
+
+    const updateElapsed = () => {
+      setElapsed(Math.floor((Date.now() - startedAt) / 1000))
+    }
+
+    updateElapsed()
+    const interval = setInterval(updateElapsed, 1000)
+    return () => clearInterval(interval)
+  }, [startedAt, status])
+
+  return getStatusBadge(status, result, hideOutcome, elapsed)
+}
+
+// Restaurant card component for grouped display
+function RestaurantCard({ item, index, isActive }: {
+  item: BatchItem
+  index: number
+  isActive: boolean
+}) {
+  const callStatus = item.status as CallStatus | undefined
+
+  return (
+    <div
+      className={`p-3 rounded-lg border transition-all ${isActive
+        ? "bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-300 shadow-md"
+        : item.result?.outcome === "hold_confirmed" || item.result?.outcome === "available"
+          ? "bg-green-50 border-green-200"
+          : "bg-white border-zinc-200"
+        }`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          {/* Number badge */}
+          <span className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isActive
+            ? "bg-orange-500 text-white"
+            : "bg-zinc-200 text-zinc-600"
+            }`}>
+            {index}
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="font-medium text-sm truncate">{item.name}</div>
+            <div className="flex items-center gap-1.5">
+              <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
+              <span className="text-xs text-zinc-600">{item.rating?.toFixed(1) || "N/A"}</span>
+            </div>
+          </div>
+        </div>
+        {/* Status badge - hide outcome until payment */}
+        <div className="shrink-0 flex items-center gap-2">
+          <LiveStatusBadge
+            status={callStatus}
+            result={item.result}
+            hideOutcome={true}
+            startedAt={item.startedAt}
+          />
+          {/* Live timer for active calls */}
+          {isActive && item.startedAt && (
+            <LiveCallTimer startedAt={item.startedAt} />
+          )}
+        </div>
+        {/* Phone icon */}
+        <Phone className={`shrink-0 h-4 w-4 ${isActive ? "text-orange-500 animate-pulse" : "text-zinc-300"
+          }`} />
+      </div>
+    </div>
+  )
 }
 
 type CallStatus = "pending" | "calling" | "speaking" | "completed" | "failed" | "no_answer" | "skipped" | "error"
@@ -77,16 +191,26 @@ function getStatusIcon(status?: CallStatus) {
   }
 }
 
-function getStatusBadge(status?: CallStatus, result?: CallResult, hideOutcome?: boolean) {
-  // Speaking - YELLOW animated
+function getStatusBadge(status?: CallStatus, result?: CallResult, hideOutcome?: boolean, elapsedSeconds?: number) {
+  // Speaking - YELLOW animated with rotating stage text (safe, doesn't reveal outcome)
   if (status === "speaking") {
+    // Rotate through safe stage messages based on elapsed time
+    const stages = [
+      "Speaking with staff...",
+      "Checking availability...",
+      "Gathering info...",
+      "Working on it...",
+    ]
+    const stageIndex = Math.floor((elapsedSeconds || 0) / 10) % stages.length
+    const stageText = stages[stageIndex]
+
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-400 text-yellow-900 shadow-sm animate-pulse">
         <span className="relative flex h-2 w-2">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-600 opacity-75"></span>
           <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-600"></span>
         </span>
-        Speaking...
+        {stageText}
       </span>
     )
   }
@@ -141,11 +265,11 @@ function getStatusBadge(status?: CallStatus, result?: CallResult, hideOutcome?: 
       </span>
     )
   }
-  // Queued/Pending - GRAY outline
+  // Queued/Pending - Soft gray (shows when waiting, but shouldn't appear much in completed state)
   if (status === "pending" || !status) {
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border border-zinc-300 text-zinc-500">
-        Queued
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-zinc-100 text-zinc-400">
+        Waiting
       </span>
     )
   }
@@ -571,50 +695,108 @@ export default function BatchStatusPage() {
                       )}
                     </div>
 
-                    {/* Right: Restaurant status cards */}
-                    <div className="lg:w-2/5 space-y-2 max-h-[400px] overflow-y-auto pr-1">
-                      {items.map((item, idx) => {
-                        const callStatus = item.status as CallStatus | undefined
-                        const isActive = callStatus === "calling" || callStatus === "speaking"
+                    {/* Right: Restaurant status cards - GROUPED BY STATUS */}
+                    <div className="lg:w-2/5 space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                      {/* Summary counts at top */}
+                      <div className="flex flex-wrap gap-2 text-xs font-medium pb-2 border-b border-zinc-200">
+                        {speakingItems > 0 && (
+                          <span className="px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">
+                            🔊 {speakingItems} speaking
+                          </span>
+                        )}
+                        {callingItems - speakingItems > 0 && (
+                          <span className="px-2 py-1 rounded-full bg-orange-100 text-orange-700">
+                            📞 {callingItems - speakingItems} calling
+                          </span>
+                        )}
+                        {pendingItems > 0 && (
+                          <span className="px-2 py-1 rounded-full bg-zinc-100 text-zinc-600">
+                            ⏳ {pendingItems} waiting
+                          </span>
+                        )}
+                        {completedItems > 0 && (
+                          <span className="px-2 py-1 rounded-full bg-zinc-100 text-zinc-600">
+                            ✓ {completedItems} done
+                          </span>
+                        )}
+                      </div>
 
+                      {/* Active Calls Section */}
+                      {(() => {
+                        const activeItems = items.filter(i =>
+                          i.status === "calling" || i.status === "speaking"
+                        )
+                        if (activeItems.length === 0) return null
                         return (
-                          <div
-                            key={item.place_id || item.id || idx}
-                            className={`p-3 rounded-lg border transition-all ${isActive
-                              ? "bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-300 shadow-md"
-                              : item.result?.outcome === "hold_confirmed" || item.result?.outcome === "available"
-                                ? "bg-green-50 border-green-200"
-                                : "bg-white border-zinc-200"
-                              }`}
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2 min-w-0 flex-1">
-                                {/* Number badge */}
-                                <span className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isActive
-                                  ? "bg-orange-500 text-white"
-                                  : "bg-zinc-200 text-zinc-600"
-                                  }`}>
-                                  {idx + 1}
-                                </span>
-                                <div className="min-w-0 flex-1">
-                                  <div className="font-medium text-sm truncate">{item.name}</div>
-                                  <div className="flex items-center gap-1.5">
-                                    <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
-                                    <span className="text-xs text-zinc-600">{item.rating?.toFixed(1) || "N/A"}</span>
-                                  </div>
-                                </div>
-                              </div>
-                              {/* Status badge - hide outcome until payment */}
-                              <div className="shrink-0">
-                                {getStatusBadge(callStatus, item.result, true)}
-                              </div>
-                              {/* Phone icon */}
-                              <Phone className={`shrink-0 h-4 w-4 ${isActive ? "text-orange-500 animate-pulse" : "text-zinc-300"
-                                }`} />
-                            </div>
+                          <div className="space-y-2">
+                            <h4 className="text-xs font-semibold text-orange-600 uppercase tracking-wider flex items-center gap-1">
+                              <span className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></span>
+                              Active Calls
+                            </h4>
+                            {activeItems.map((item) => {
+                              const originalIdx = items.findIndex(i => i.place_id === item.place_id)
+                              return (
+                                <RestaurantCard
+                                  key={item.place_id || item.id}
+                                  item={item}
+                                  index={originalIdx + 1}
+                                  isActive={true}
+                                />
+                              )
+                            })}
                           </div>
                         )
-                      })}
+                      })()}
+
+                      {/* Waiting Section */}
+                      {(() => {
+                        const waitingItems = items.filter(i => i.status === "pending")
+                        if (waitingItems.length === 0) return null
+                        return (
+                          <div className="space-y-2">
+                            <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                              Waiting
+                            </h4>
+                            {waitingItems.map((item) => {
+                              const originalIdx = items.findIndex(i => i.place_id === item.place_id)
+                              return (
+                                <RestaurantCard
+                                  key={item.place_id || item.id}
+                                  item={item}
+                                  index={originalIdx + 1}
+                                  isActive={false}
+                                />
+                              )
+                            })}
+                          </div>
+                        )
+                      })()}
+
+                      {/* Completed Section */}
+                      {(() => {
+                        const doneItems = items.filter(i =>
+                          ["completed", "failed", "no_answer", "error", "skipped"].includes(i.status || "")
+                        )
+                        if (doneItems.length === 0) return null
+                        return (
+                          <div className="space-y-2">
+                            <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                              Completed
+                            </h4>
+                            {doneItems.map((item) => {
+                              const originalIdx = items.findIndex(i => i.place_id === item.place_id)
+                              return (
+                                <RestaurantCard
+                                  key={item.place_id || item.id}
+                                  item={item}
+                                  index={originalIdx + 1}
+                                  isActive={false}
+                                />
+                              )
+                            })}
+                          </div>
+                        )
+                      })()}
                     </div>
                   </div>
                 )
@@ -664,13 +846,27 @@ export default function BatchStatusPage() {
                     <div className="text-3xl font-bold">{totalItems}</div>
                     <div className="text-xs text-muted-foreground font-medium">Called</div>
                   </div>
-                  <div className="rounded-xl bg-gradient-to-br from-green-100 to-emerald-50 p-4 shadow-sm">
-                    <div className="text-3xl font-bold text-green-600">{available}</div>
-                    <div className="text-xs text-green-600 font-medium">Available</div>
+                  {/* Available - Celebrate if found, soften if 0 */}
+                  <div className={`rounded-xl p-4 shadow-sm ${available > 0
+                    ? "bg-gradient-to-br from-green-200 to-emerald-100 ring-2 ring-green-400"
+                    : "bg-gradient-to-br from-zinc-100 to-zinc-50"}`}>
+                    <div className={`text-3xl font-bold ${available > 0 ? "text-green-600" : "text-zinc-400"}`}>
+                      {available > 0 ? available : "—"}
+                    </div>
+                    <div className={`text-xs font-medium ${available > 0 ? "text-green-600" : "text-zinc-400"}`}>
+                      {available > 0 ? "Available! 🎉" : "None found"}
+                    </div>
                   </div>
-                  <div className="rounded-xl bg-gradient-to-br from-red-100 to-orange-50 p-4 shadow-sm">
-                    <div className="text-3xl font-bold text-red-600">{holdsConfirmed}</div>
-                    <div className="text-xs text-red-600 font-medium">On Hold</div>
+                  {/* Holds - Celebrate if found, soften if 0 */}
+                  <div className={`rounded-xl p-4 shadow-sm ${holdsConfirmed > 0
+                    ? "bg-gradient-to-br from-amber-200 to-orange-100 ring-2 ring-amber-400"
+                    : "bg-gradient-to-br from-zinc-100 to-zinc-50"}`}>
+                    <div className={`text-3xl font-bold ${holdsConfirmed > 0 ? "text-amber-600" : "text-zinc-400"}`}>
+                      {holdsConfirmed > 0 ? holdsConfirmed : "—"}
+                    </div>
+                    <div className={`text-xs font-medium ${holdsConfirmed > 0 ? "text-amber-600" : "text-zinc-400"}`}>
+                      {holdsConfirmed > 0 ? "On Hold! 🎉" : "No holds"}
+                    </div>
                   </div>
                 </div>
               )}
@@ -697,15 +893,25 @@ export default function BatchStatusPage() {
                   </div>
                 )}
 
-                {/* STATE: All Calls Complete - Show "View Results" */}
+                {/* STATE: All Calls Complete - Show payment or results */}
                 {isCompleted && (
-                  <Button
-                    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                    className="w-full h-14 text-lg font-semibold bg-white text-emerald-700 hover:bg-white/90 shadow-lg"
-                  >
-                    <Check className="h-5 w-5 mr-2" />
-                    View Results ({available} Available)
-                  </Button>
+                  paywallRequired ? (
+                    <DroppPayment
+                      batchId={batchId || ""}
+                      amount={2.99}
+                      description={`Unlock reservation results for ${items.length} restaurants`}
+                    />
+                  ) : (
+                    <Button
+                      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                      className="w-full h-14 text-lg font-semibold bg-white text-emerald-700 hover:bg-white/90 shadow-lg"
+                    >
+                      <Check className="h-5 w-5 mr-2" />
+                      {available > 0
+                        ? `🎉 See ${available} Available Option${available > 1 ? 's' : ''}`
+                        : "View Call Details"}
+                    </Button>
+                  )
                 )}
 
                 {/* STATE: Found (not started) - Show "Check Availability" */}

@@ -47,11 +47,21 @@ export async function saveSearchToHistory(
     }
 
     try {
-        await addDoc(collection(db, "searchHistory"), {
+        // Remove undefined fields to prevent Firestore errors
+        const cleanData: any = {
             userId,
-            ...data,
+            cravingText: data.cravingText,
+            location: data.location,
+            batchId: data.batchId,
             createdAt: serverTimestamp(),
-        })
+        }
+
+        // Only include optional fields if they have values
+        if (data.partySize !== undefined) cleanData.partySize = data.partySize
+        if (data.date !== undefined) cleanData.date = data.date
+        if (data.time !== undefined) cleanData.time = data.time
+
+        await addDoc(collection(db, "searchHistory"), cleanData)
     } catch (error) {
         console.error("Failed to save search history:", error)
         // Don't throw - search history is non-critical
