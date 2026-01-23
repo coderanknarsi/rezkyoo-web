@@ -527,7 +527,7 @@ export default function BatchStatusPage() {
   ).length
   const callingItems = items.filter(i => i.status === "calling" || i.status === "speaking").length
   const speakingItems = items.filter(i => i.status === "speaking").length
-  const pendingItems = items.filter(i => i.status === "pending").length
+  const pendingItems = items.filter(i => !i.status || i.status === "pending" || i.status === "queued").length
   const holdsConfirmed = items.filter(i => i.result?.outcome === "hold_confirmed").length
   const available = items.filter(i =>
     i.result?.outcome === "available" || i.result?.outcome === "hold_confirmed"
@@ -750,7 +750,7 @@ export default function BatchStatusPage() {
 
                       {/* Waiting Section */}
                       {(() => {
-                        const waitingItems = items.filter(i => i.status === "pending")
+                        const waitingItems = items.filter(i => !i.status || i.status === "pending" || i.status === "queued")
                         if (waitingItems.length === 0) return null
                         return (
                           <div className="space-y-2">
