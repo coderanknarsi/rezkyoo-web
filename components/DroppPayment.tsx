@@ -34,6 +34,7 @@ export function DroppPayment({
 
     const merchantId = process.env.NEXT_PUBLIC_DROPP_MERCHANT_ID
     const env = process.env.NEXT_PUBLIC_DROPP_ENV || "sandbox"
+    const signingKey = process.env.NEXT_PUBLIC_DROPP_SIGNING_KEY
 
     // SDK URLs based on environment
     const sdkUrl = env === "production"
@@ -81,9 +82,12 @@ export function DroppPayment({
             className={`dropp-payment w-full h-14 text-lg font-semibold bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg shadow-lg hover:from-purple-700 hover:to-indigo-700 transition-all flex items-center justify-center gap-2 ${className}`}
             data-merchant-id={merchantId}
             data-amount={amount.toFixed(2)}
+            data-currency="USD"
             data-callback-url={callbackUrl}
             data-request-id={requestId}
             data-description={description}
+            data-title="RezKyoo"
+            data-signing-key={signingKey}
             data-is-recurring="false"
         >
             <Lock className="h-5 w-5" />

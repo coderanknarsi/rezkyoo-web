@@ -901,7 +901,7 @@ export default function BatchStatusPage() {
 
                 {/* STATE: All Calls Complete - Show payment or results */}
                 {isCompleted && (
-                  paywallRequired ? (
+                  !canViewResults ? (
                     <DroppPayment
                       batchId={batchId || ""}
                       amount={2.99}
@@ -913,11 +913,9 @@ export default function BatchStatusPage() {
                       className="w-full h-14 text-lg font-semibold bg-white text-emerald-700 hover:bg-white/90 shadow-lg"
                     >
                       <Check className="h-5 w-5 mr-2" />
-                      {canViewResults
-                        ? (available > 0
-                          ? `🎉 See ${available} Available Option${available > 1 ? 's' : ''}`
-                          : "View Call Details")
-                        : "Unlock Results"}
+                      {available > 0
+                        ? `🎉 See ${available} Available Option${available > 1 ? 's' : ''}`
+                        : "View Call Details"}
                     </Button>
                   )
                 )}
