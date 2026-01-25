@@ -532,6 +532,7 @@ export default function BatchStatusPage() {
   const available = items.filter(i =>
     i.result?.outcome === "available" || i.result?.outcome === "hold_confirmed"
   ).length
+  const canViewResults = !paywallRequired
 
   // === MONOTONIC STAGE FUNCTION ===
   // Stage can only advance: searching → ready → calling → completed
@@ -603,7 +604,9 @@ export default function BatchStatusPage() {
                   <p className="text-sm text-muted-foreground mt-1">
                     {isReady && `${items.length} restaurants match your search`}
                     {isCalling && `${callingItems} calling, ${pendingItems} queued`}
-                    {isCompleted && `${available} available out of ${totalItems} called`}
+                    {isCompleted && (canViewResults
+                      ? `${available} available out of ${totalItems} called`
+                      : `${totalItems} calls completed`)}
                   </p>
                   {/* Info note about closed restaurants - only show in ready state */}
                   {isReady && (
@@ -824,7 +827,7 @@ export default function BatchStatusPage() {
                 <div className="mb-4">
                   <div className="flex justify-between text-sm text-muted-foreground mb-2">
                     <span>{completedItems} of {totalItems} calls completed</span>
-                    {holdsConfirmed > 0 && (
+                    {canViewResults && holdsConfirmed > 0 && (
                       <span className="text-red-600 font-semibold">
                         {holdsConfirmed} hold{holdsConfirmed > 1 ? "s" : ""} confirmed! 🎉
                       </span>
@@ -847,25 +850,25 @@ export default function BatchStatusPage() {
                     <div className="text-xs text-muted-foreground font-medium">Called</div>
                   </div>
                   {/* Available - Celebrate if found, soften if 0 */}
-                  <div className={`rounded-xl p-4 shadow-sm ${available > 0
+                  <div className={`rounded-xl p-4 shadow-sm ${canViewResults && available > 0
                     ? "bg-gradient-to-br from-green-200 to-emerald-100 ring-2 ring-green-400"
                     : "bg-gradient-to-br from-zinc-100 to-zinc-50"}`}>
-                    <div className={`text-3xl font-bold ${available > 0 ? "text-green-600" : "text-zinc-400"}`}>
-                      {available > 0 ? available : "—"}
+                    <div className={`text-3xl font-bold ${canViewResults && available > 0 ? "text-green-600" : "text-zinc-400"}`}>
+                      {canViewResults ? (available > 0 ? available : "—") : "—"}
                     </div>
-                    <div className={`text-xs font-medium ${available > 0 ? "text-green-600" : "text-zinc-400"}`}>
-                      {available > 0 ? "Available! 🎉" : "None found"}
+                    <div className={`text-xs font-medium ${canViewResults && available > 0 ? "text-green-600" : "text-zinc-400"}`}>
+                      {canViewResults ? (available > 0 ? "Available! 🎉" : "None found") : "Unlock to view"}
                     </div>
                   </div>
                   {/* Holds - Celebrate if found, soften if 0 */}
-                  <div className={`rounded-xl p-4 shadow-sm ${holdsConfirmed > 0
+                  <div className={`rounded-xl p-4 shadow-sm ${canViewResults && holdsConfirmed > 0
                     ? "bg-gradient-to-br from-amber-200 to-orange-100 ring-2 ring-amber-400"
                     : "bg-gradient-to-br from-zinc-100 to-zinc-50"}`}>
-                    <div className={`text-3xl font-bold ${holdsConfirmed > 0 ? "text-amber-600" : "text-zinc-400"}`}>
-                      {holdsConfirmed > 0 ? holdsConfirmed : "—"}
+                    <div className={`text-3xl font-bold ${canViewResults && holdsConfirmed > 0 ? "text-amber-600" : "text-zinc-400"}`}>
+                      {canViewResults ? (holdsConfirmed > 0 ? holdsConfirmed : "—") : "—"}
                     </div>
-                    <div className={`text-xs font-medium ${holdsConfirmed > 0 ? "text-amber-600" : "text-zinc-400"}`}>
-                      {holdsConfirmed > 0 ? "On Hold! 🎉" : "No holds"}
+                    <div className={`text-xs font-medium ${canViewResults && holdsConfirmed > 0 ? "text-amber-600" : "text-zinc-400"}`}>
+                      {canViewResults ? (holdsConfirmed > 0 ? "On Hold! 🎉" : "No holds") : "Unlock to view"}
                     </div>
                   </div>
                 </div>
@@ -987,19 +990,26 @@ export default function BatchStatusPage() {
                   const displayId = item.place_id ?? item.id ?? "unknown"
                   const callStatus = item.status as CallStatus | undefined
                   const showCallStatus = !isReady // Only show call status after calls started
+                  const hideOutcome = paywallRequired
 
                   return (
                     <Card
                       key={displayId}
-                      className={`border-0 shadow-md transition-all ${item.result?.outcome === "hold_confirmed"
-                        ? "bg-gradient-to-r from-green-50 to-emerald-50 ring-2 ring-green-300 shadow-green-100"
-                        : item.result?.outcome === "available"
-                          ? "bg-gradient-to-r from-green-50 to-teal-50 ring-1 ring-green-200"
-                          : item.status === "speaking"
-                            ? "bg-gradient-to-r from-blue-50 to-indigo-50 ring-1 ring-blue-200"
-                            : item.status === "calling"
-                              ? "bg-gradient-to-r from-amber-50 to-orange-50 ring-1 ring-amber-200"
-                              : "bg-white/80 backdrop-blur hover:shadow-lg transition-shadow"
+                      className={`border-0 shadow-md transition-all ${hideOutcome
+                        ? item.status === "speaking"
+                          ? "bg-gradient-to-r from-blue-50 to-indigo-50 ring-1 ring-blue-200"
+                          : item.status === "calling"
+                            ? "bg-gradient-to-r from-amber-50 to-orange-50 ring-1 ring-amber-200"
+                            : "bg-white/80 backdrop-blur hover:shadow-lg transition-shadow"
+                        : item.result?.outcome === "hold_confirmed"
+                          ? "bg-gradient-to-r from-green-50 to-emerald-50 ring-2 ring-green-300 shadow-green-100"
+                          : item.result?.outcome === "available"
+                            ? "bg-gradient-to-r from-green-50 to-teal-50 ring-1 ring-green-200"
+                            : item.status === "speaking"
+                              ? "bg-gradient-to-r from-blue-50 to-indigo-50 ring-1 ring-blue-200"
+                              : item.status === "calling"
+                                ? "bg-gradient-to-r from-amber-50 to-orange-50 ring-1 ring-amber-200"
+                                : "bg-white/80 backdrop-blur hover:shadow-lg transition-shadow"
                         }`}
                     >
                       <CardContent className="p-6">
@@ -1055,7 +1065,7 @@ export default function BatchStatusPage() {
                             )}
 
                             {/* Call result - only after calls */}
-                            {showCallStatus && item.result && (
+                            {showCallStatus && item.result && !hideOutcome && (
                               <div className="mt-4">
                                 {getOutcomeMessage(item.result)}
                               </div>
