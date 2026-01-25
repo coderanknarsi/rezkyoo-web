@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { adminDb } from "@/lib/firebase-admin"
+import { createPaidToken, type PaidScope } from "@/lib/paywall"
 
 /**
  * Dropp Payment Callback Handler
@@ -48,8 +49,25 @@ export async function GET(request: NextRequest) {
 
             console.log(`✅ Payment successful for batch ${batchId}`)
 
-            // Redirect back to batch page with success
-            return NextResponse.redirect(new URL(`/app/batch/${batchId}?payment=success`, request.url))
+            const exp = Math.floor(Date.now() / 1000) + 2 * 60 * 60 // 2 hours
+            const scopes: PaidScope[] = ["availability", "details", "booking"]
+            const token = createPaidToken({
+                sub: String(p2pData.transactionId || p2pData.requestId || "dropp-payment"),
+                exp,
+                scopes,
+                batchId,
+            })
+
+            // Redirect back to batch page with success + set token cookie
+            const response = NextResponse.redirect(new URL(`/app/batch/${batchId}?payment=success`, request.url))
+            response.cookies.set(`rezkyoo_paid_token_${batchId}`, token, {
+                httpOnly: true,
+                sameSite: "lax",
+                secure: request.nextUrl.protocol === "https:",
+                path: "/",
+                maxAge: 2 * 60 * 60,
+            })
+            return response
         } else {
             console.error("❌ Payment failed:", p2pData)
             return NextResponse.redirect(new URL(`/app/batch/${batchId}?payment=failed`, request.url))

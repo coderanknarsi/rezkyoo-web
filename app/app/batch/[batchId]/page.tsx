@@ -401,6 +401,8 @@ export default function BatchStatusPage() {
       // FIX: Only show paywall AFTER batch is completed, never mid-flight
       if (data?.paywall_required && data?.status === "completed") {
         setPaywallRequired(true)
+      } else if (data?.status === "completed") {
+        setPaywallRequired(false)
       }
       if (data?.map_url) {
         setMapUrl(data.map_url)
@@ -532,7 +534,8 @@ export default function BatchStatusPage() {
   const available = items.filter(i =>
     i.result?.outcome === "available" || i.result?.outcome === "hold_confirmed"
   ).length
-  const canViewResults = !paywallRequired
+  const forceHideResults = process.env.NEXT_PUBLIC_REZKYOO_HIDE_RESULTS === "true"
+  const canViewResults = !paywallRequired && !forceHideResults
 
   // === MONOTONIC STAGE FUNCTION ===
   // Stage can only advance: searching → ready → calling → completed
@@ -910,9 +913,11 @@ export default function BatchStatusPage() {
                       className="w-full h-14 text-lg font-semibold bg-white text-emerald-700 hover:bg-white/90 shadow-lg"
                     >
                       <Check className="h-5 w-5 mr-2" />
-                      {available > 0
-                        ? `🎉 See ${available} Available Option${available > 1 ? 's' : ''}`
-                        : "View Call Details"}
+                      {canViewResults
+                        ? (available > 0
+                          ? `🎉 See ${available} Available Option${available > 1 ? 's' : ''}`
+                          : "View Call Details")
+                        : "Unlock Results"}
                     </Button>
                   )
                 )}
@@ -990,7 +995,7 @@ export default function BatchStatusPage() {
                   const displayId = item.place_id ?? item.id ?? "unknown"
                   const callStatus = item.status as CallStatus | undefined
                   const showCallStatus = !isReady // Only show call status after calls started
-                  const hideOutcome = paywallRequired
+                  const hideOutcome = !canViewResults
 
                   return (
                     <Card
