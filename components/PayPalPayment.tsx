@@ -184,9 +184,6 @@ export function PayPalPayment({
         </div>
       )}
       <div ref={paypalRef} className={loading ? "hidden" : ""} />
-      <p className="text-center text-xs text-gray-400 mt-2">
-        Unlock results for ${amount.toFixed(2)}
-      </p>
     </div>
   )
 }

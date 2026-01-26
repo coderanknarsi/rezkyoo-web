@@ -32,6 +32,49 @@ function formatTime12Hour(time24: string): string {
   return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`
 }
 
+// Hold expiration timer - 15 minutes from batch completion
+const HOLD_DURATION_MS = 15 * 60 * 1000 // 15 minutes
+
+function HoldCountdownTimer({ completedAt }: { completedAt?: number }) {
+  const [timeLeft, setTimeLeft] = React.useState<number | null>(null)
+
+  React.useEffect(() => {
+    if (!completedAt) return
+
+    const updateTimer = () => {
+      const expiresAt = completedAt + HOLD_DURATION_MS
+      const remaining = Math.max(0, expiresAt - Date.now())
+      setTimeLeft(remaining)
+    }
+
+    updateTimer()
+    const interval = setInterval(updateTimer, 1000)
+    return () => clearInterval(interval)
+  }, [completedAt])
+
+  if (timeLeft === null || timeLeft <= 0) {
+    return (
+      <div className="flex items-center justify-center gap-2 text-red-600 font-semibold">
+        <AlertCircle className="h-4 w-4" />
+        <span>Holds may have expired</span>
+      </div>
+    )
+  }
+
+  const minutes = Math.floor(timeLeft / 60000)
+  const seconds = Math.floor((timeLeft % 60000) / 1000)
+  const isUrgent = minutes < 5
+
+  return (
+    <div className={`flex items-center justify-center gap-2 font-semibold ${isUrgent ? "text-red-600" : "text-amber-600"}`}>
+      <RefreshCw className={`h-4 w-4 ${isUrgent ? "animate-pulse" : ""}`} />
+      <span>
+        Holds expire in {minutes}:{seconds.toString().padStart(2, '0')}
+      </span>
+    </div>
+  )
+}
+
 // Format elapsed seconds as M:SS (e.g., "1:23")
 function formatElapsedTime(seconds: number): string {
   const mins = Math.floor(seconds / 60)
@@ -363,6 +406,7 @@ export default function BatchStatusPage() {
   const [items, setItems] = React.useState<BatchItem[]>([])
   const [status, setStatus] = React.useState<string | null>(null)
   const [paywallRequired, setPaywallRequired] = React.useState(false)
+  const [completedAt, setCompletedAt] = React.useState<number | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const [isStartingCalls, setIsStartingCalls] = React.useState(false)
   const [mapUrl, setMapUrl] = React.useState<string | null>(null)
@@ -393,6 +437,10 @@ export default function BatchStatusPage() {
 
       setError(null)
       if (typeof data?.status === "string") {
+        // Track when batch first transitions to completed
+        if (data.status === "completed" && status !== "completed") {
+          setCompletedAt(Date.now())
+        }
         setStatus(data.status)
       }
       if (Array.isArray(data?.items)) {
@@ -902,11 +950,47 @@ export default function BatchStatusPage() {
                 {/* STATE: All Calls Complete - Show payment or results */}
                 {isCompleted && (
                   !canViewResults ? (
-                    <PayPalPayment
-                      batchId={batchId || ""}
-                      amount={2.99}
-                      description={`Unlock reservation results for ${items.length} restaurants`}
-                    />
+                    <div className="space-y-4">
+                      {/* Hold Timer Warning */}
+                      <div className="bg-white/95 rounded-lg p-3 text-center">
+                        <HoldCountdownTimer completedAt={completedAt || Date.now()} />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Restaurants are holding tables for you
+                        </p>
+                      </div>
+
+                      {/* What you're unlocking */}
+                      <div className="bg-white/10 rounded-lg p-3 text-white">
+                        <h4 className="font-semibold text-center mb-2">🔓 Unlock Your Results</h4>
+                        <ul className="text-sm space-y-1 text-white/90">
+                          <li className="flex items-center gap-2">
+                            <Check className="h-4 w-4 text-emerald-300" />
+                            See which restaurants have availability
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <Check className="h-4 w-4 text-emerald-300" />
+                            View table holds confirmed for you
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <Check className="h-4 w-4 text-emerald-300" />
+                            Get alternative time suggestions
+                          </li>
+                        </ul>
+                      </div>
+
+                      {/* Price callout */}
+                      <div className="text-center text-white">
+                        <span className="text-2xl font-bold">$2.99</span>
+                        <span className="text-white/70 text-sm ml-2">one-time unlock</span>
+                      </div>
+
+                      {/* PayPal Buttons */}
+                      <PayPalPayment
+                        batchId={batchId || ""}
+                        amount={2.99}
+                        description={`Unlock reservation results for ${items.length} restaurants`}
+                      />
+                    </div>
                   ) : (
                     <Button
                       onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
