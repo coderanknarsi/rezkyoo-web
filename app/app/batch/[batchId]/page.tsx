@@ -19,7 +19,7 @@ import { AppHeader } from "@/components/AppHeader"
 import { useAuth } from "@/lib/auth-context"
 import { CallMapVisualization } from "./components/CallMapVisualization"
 import { DynamicCallMap } from "./components/DynamicCallMap"
-import { DroppPayment } from "@/components/DroppPayment"
+import { PayPalPayment } from "@/components/PayPalPayment"
 
 const POLL_INTERVAL_MS = 5000 // 5 seconds during active calls
 
@@ -902,7 +902,7 @@ export default function BatchStatusPage() {
                 {/* STATE: All Calls Complete - Show payment or results */}
                 {isCompleted && (
                   !canViewResults ? (
-                    <DroppPayment
+                    <PayPalPayment
                       batchId={batchId || ""}
                       amount={2.99}
                       description={`Unlock reservation results for ${items.length} restaurants`}

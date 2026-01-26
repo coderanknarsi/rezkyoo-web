@@ -87,8 +87,11 @@ export function DroppPayment({
             data-request-id={requestId}
             data-description={description}
             data-title="RezKyoo"
+            data-product-name="RezKyoo"
+            data-product-description={description}
             data-signing-key={signingKey}
             data-is-recurring="false"
+            data-env={env}
         >
             <Lock className="h-5 w-5" />
             Unlock Results - ${amount.toFixed(2)}
