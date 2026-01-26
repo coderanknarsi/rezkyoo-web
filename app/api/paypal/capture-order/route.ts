@@ -109,8 +109,8 @@ export async function POST(request: NextRequest) {
       batchId,
     })
 
-    // Set the paid_token cookie
-    response.cookies.set("paid_token", token, {
+    // Set the paid_token cookie (batch-specific name to match get-batch-status)
+    response.cookies.set(`rezkyoo_paid_token_${batchId}`, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

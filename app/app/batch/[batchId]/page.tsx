@@ -7,14 +7,6 @@ import { Phone, PhoneCall, PhoneOff, Check, Star, AlertCircle, RefreshCw, MapPin
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { AppHeader } from "@/components/AppHeader"
 import { useAuth } from "@/lib/auth-context"
 import { CallMapVisualization } from "./components/CallMapVisualization"
@@ -582,8 +574,13 @@ export default function BatchStatusPage() {
   const available = items.filter(i =>
     i.result?.outcome === "available" || i.result?.outcome === "hold_confirmed"
   ).length
+  
+  // Paywall logic:
+  // - forceHideResults is a dev flag to always require payment
+  // - paywallRequired comes from the backend (false if paid token is valid)
+  // - canViewResults is true when either: no paywall needed, OR payment was made
   const forceHideResults = process.env.NEXT_PUBLIC_REZKYOO_HIDE_RESULTS === "true"
-  const canViewResults = !paywallRequired && !forceHideResults
+  const canViewResults = !paywallRequired  // Payment clears the paywall
 
   // === MONOTONIC STAGE FUNCTION ===
   // Stage can only advance: searching → ready → calling → completed
@@ -900,26 +897,26 @@ export default function BatchStatusPage() {
                     <div className="text-3xl font-bold">{totalItems}</div>
                     <div className="text-xs text-muted-foreground font-medium">Called</div>
                   </div>
-                  {/* Available - Celebrate if found, soften if 0 */}
-                  <div className={`rounded-xl p-4 shadow-sm ${canViewResults && available > 0
+                  {/* Available - ALWAYS show count (tease value before payment) */}
+                  <div className={`rounded-xl p-4 shadow-sm ${available > 0
                     ? "bg-gradient-to-br from-green-200 to-emerald-100 ring-2 ring-green-400"
                     : "bg-gradient-to-br from-zinc-100 to-zinc-50"}`}>
-                    <div className={`text-3xl font-bold ${canViewResults && available > 0 ? "text-green-600" : "text-zinc-400"}`}>
-                      {canViewResults ? (available > 0 ? available : "—") : "—"}
+                    <div className={`text-3xl font-bold ${available > 0 ? "text-green-600" : "text-zinc-400"}`}>
+                      {available > 0 ? available : "0"}
                     </div>
-                    <div className={`text-xs font-medium ${canViewResults && available > 0 ? "text-green-600" : "text-zinc-400"}`}>
-                      {canViewResults ? (available > 0 ? "Available! 🎉" : "None found") : "Unlock to view"}
+                    <div className={`text-xs font-medium ${available > 0 ? "text-green-600" : "text-zinc-400"}`}>
+                      {available > 0 ? "Available! 🎉" : "None found"}
                     </div>
                   </div>
-                  {/* Holds - Celebrate if found, soften if 0 */}
-                  <div className={`rounded-xl p-4 shadow-sm ${canViewResults && holdsConfirmed > 0
+                  {/* Holds - ALWAYS show count */}
+                  <div className={`rounded-xl p-4 shadow-sm ${holdsConfirmed > 0
                     ? "bg-gradient-to-br from-amber-200 to-orange-100 ring-2 ring-amber-400"
                     : "bg-gradient-to-br from-zinc-100 to-zinc-50"}`}>
-                    <div className={`text-3xl font-bold ${canViewResults && holdsConfirmed > 0 ? "text-amber-600" : "text-zinc-400"}`}>
-                      {canViewResults ? (holdsConfirmed > 0 ? holdsConfirmed : "—") : "—"}
+                    <div className={`text-3xl font-bold ${holdsConfirmed > 0 ? "text-amber-600" : "text-zinc-400"}`}>
+                      {holdsConfirmed > 0 ? holdsConfirmed : "0"}
                     </div>
-                    <div className={`text-xs font-medium ${canViewResults && holdsConfirmed > 0 ? "text-amber-600" : "text-zinc-400"}`}>
-                      {canViewResults ? (holdsConfirmed > 0 ? "On Hold! 🎉" : "No holds") : "Unlock to view"}
+                    <div className={`text-xs font-medium ${holdsConfirmed > 0 ? "text-amber-600" : "text-zinc-400"}`}>
+                      {holdsConfirmed > 0 ? "On Hold! 🎉" : "No holds"}
                     </div>
                   </div>
                 </div>
@@ -950,47 +947,79 @@ export default function BatchStatusPage() {
                 {/* STATE: All Calls Complete - Show payment or results */}
                 {isCompleted && (
                   !canViewResults ? (
-                    <div className="space-y-4">
-                      {/* Hold Timer Warning */}
-                      <div className="bg-white/95 rounded-lg p-3 text-center">
-                        <HoldCountdownTimer completedAt={completedAt || Date.now()} />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Restaurants are holding tables for you
+                    // Check if there's anything worth paying for
+                    available > 0 ? (
+                      <div className="space-y-4">
+                        {/* Hold Timer Warning */}
+                        <div className="bg-white/95 rounded-lg p-3 text-center">
+                          <HoldCountdownTimer completedAt={completedAt || Date.now()} />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Restaurants are holding tables for you
+                          </p>
+                        </div>
+
+                        {/* Success message - tease value */}
+                        <div className="bg-white/10 rounded-lg p-3 text-white text-center">
+                          <h4 className="font-semibold text-lg mb-1">🎉 Great news!</h4>
+                          <p className="text-white/90">
+                            We found <span className="font-bold text-emerald-300">{available} restaurant{available > 1 ? 's' : ''}</span> with availability!
+                          </p>
+                          {holdsConfirmed > 0 && (
+                            <p className="text-amber-300 text-sm mt-1">
+                              {holdsConfirmed} already holding a table for you
+                            </p>
+                          )}
+                        </div>
+
+                        {/* What you're unlocking */}
+                        <div className="bg-white/10 rounded-lg p-3 text-white">
+                          <h4 className="font-semibold text-center mb-2">🔓 Unlock to see:</h4>
+                          <ul className="text-sm space-y-1 text-white/90">
+                            <li className="flex items-center gap-2">
+                              <Check className="h-4 w-4 text-emerald-300" />
+                              Which restaurants are available
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <Check className="h-4 w-4 text-emerald-300" />
+                              Contact info & booking details
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <Check className="h-4 w-4 text-emerald-300" />
+                              Alternative time suggestions
+                            </li>
+                          </ul>
+                        </div>
+
+                        {/* Price callout */}
+                        <div className="text-center text-white">
+                          <span className="text-2xl font-bold">$2.99</span>
+                          <span className="text-white/70 text-sm ml-2">one-time unlock</span>
+                        </div>
+
+                        {/* PayPal Buttons */}
+                        <PayPalPayment
+                          batchId={batchId || ""}
+                          amount={2.99}
+                          description={`Unlock ${available} available restaurants`}
+                        />
+                      </div>
+                    ) : (
+                      // No availability - don't charge, show sympathy
+                      <div className="text-center text-white py-4">
+                        <div className="text-4xl mb-2">😔</div>
+                        <h4 className="font-semibold text-lg mb-1">No luck this time</h4>
+                        <p className="text-white/80 text-sm mb-4">
+                          None of the restaurants have availability for your requested time.
                         </p>
+                        <Button
+                          onClick={() => router.push("/app/search")}
+                          variant="outline"
+                          className="bg-white/20 border-white/30 text-white hover:bg-white/30"
+                        >
+                          Try Different Time or Location
+                        </Button>
                       </div>
-
-                      {/* What you're unlocking */}
-                      <div className="bg-white/10 rounded-lg p-3 text-white">
-                        <h4 className="font-semibold text-center mb-2">🔓 Unlock Your Results</h4>
-                        <ul className="text-sm space-y-1 text-white/90">
-                          <li className="flex items-center gap-2">
-                            <Check className="h-4 w-4 text-emerald-300" />
-                            See which restaurants have availability
-                          </li>
-                          <li className="flex items-center gap-2">
-                            <Check className="h-4 w-4 text-emerald-300" />
-                            View table holds confirmed for you
-                          </li>
-                          <li className="flex items-center gap-2">
-                            <Check className="h-4 w-4 text-emerald-300" />
-                            Get alternative time suggestions
-                          </li>
-                        </ul>
-                      </div>
-
-                      {/* Price callout */}
-                      <div className="text-center text-white">
-                        <span className="text-2xl font-bold">$2.99</span>
-                        <span className="text-white/70 text-sm ml-2">one-time unlock</span>
-                      </div>
-
-                      {/* PayPal Buttons */}
-                      <PayPalPayment
-                        batchId={batchId || ""}
-                        amount={2.99}
-                        description={`Unlock reservation results for ${items.length} restaurants`}
-                      />
-                    </div>
+                    )
                   ) : (
                     <Button
                       onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
@@ -1167,29 +1196,6 @@ export default function BatchStatusPage() {
             </div>
           )}
 
-          {/* Paywall dialog */}
-          <Dialog open={paywallRequired} onOpenChange={setPaywallRequired}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle className="text-xl">Unlock Your Reservations</DialogTitle>
-                <DialogDescription>
-                  Great news! We found availability at some restaurants.
-                  Unlock to see which ones and let us secure your table.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter className="gap-2 sm:gap-0">
-                <Button variant="outline" onClick={() => setPaywallRequired(false)}>
-                  Maybe Later
-                </Button>
-                <Button
-                  onClick={() => router.push("/app/unlock")}
-                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
-                >
-                  Unlock Results
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
         </div>
       </div>
     </>

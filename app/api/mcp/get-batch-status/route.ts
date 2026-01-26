@@ -18,17 +18,34 @@ export async function POST(req: Request) {
         return idx >= 0 ? [c.slice(0, idx), c.slice(idx + 1)] : [c, ""]
       })
       .find(([key]) => key === `rezkyoo_paid_token_${body.batchId}`)?.[1]
+    
+    const hasPaidToken = Boolean(paidToken && paidToken.length > 0)
     const requestBody = paidToken ? { ...body, paid_token: paidToken } : body
     const callMode = process.env.REZKYOO_CALL_MODE ?? "live"
+    
     if (callMode === "simulate") {
       const existing = readSimBatch(body.batchId)
-      if (existing) return Response.json(existing)
+      if (existing) {
+        // In simulate mode, check if we have a paid token to unlock results
+        const isCompleted = existing.status === "completed"
+        return Response.json({
+          ...existing,
+          paywall_required: isCompleted && !hasPaidToken,
+        })
+      }
 
       const snapshot = await getBatchStatus(requestBody)
       if (snapshot?.ok) {
         seedSimBatch(body.batchId, snapshot.items ?? [])
         const seeded = readSimBatch(body.batchId)
-        return Response.json(seeded ?? snapshot)
+        if (seeded) {
+          const isCompleted = seeded.status === "completed"
+          return Response.json({
+            ...seeded,
+            paywall_required: isCompleted && !hasPaidToken,
+          })
+        }
+        return Response.json(snapshot)
       }
       return Response.json(snapshot)
     }
