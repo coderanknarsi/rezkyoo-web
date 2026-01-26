@@ -207,7 +207,21 @@ type BatchItem = {
   startedAt?: number  // Epoch ms when call started
 }
 
-function getStatusIcon(status?: CallStatus) {
+function getStatusIcon(status?: CallStatus, result?: CallResult) {
+  // After calls complete, show outcome-based icons
+  if (status === "completed" && result) {
+    if (result.outcome === "available" || result.outcome === "hold_confirmed") {
+      return <Check className="h-5 w-5 text-emerald-500" />
+    }
+    if (result.outcome === "not_available") {
+      if (result.alternative_time) {
+        return <AlertCircle className="h-5 w-5 text-amber-500" />
+      }
+      return <PhoneOff className="h-5 w-5 text-zinc-400" />
+    }
+    return <PhoneOff className="h-5 w-5 text-zinc-400" />
+  }
+  
   switch (status) {
     case "calling":
       return <PhoneCall className="h-5 w-5 text-amber-500 animate-pulse" />
@@ -343,7 +357,7 @@ function RatingStars({ rating, count }: { rating?: number; count?: number }) {
   )
 }
 
-function getOutcomeMessage(result?: CallResult) {
+function getOutcomeMessage(result?: CallResult, onBook?: () => void) {
   if (!result) return null
 
   if (result.outcome === "hold_confirmed") {
@@ -353,6 +367,14 @@ function getOutcomeMessage(result?: CallResult) {
         {result.time_held && <div className="text-emerald-600">Held until: {result.time_held}</div>}
         {result.perks && <div className="mt-1 text-emerald-600">Perks: {result.perks}</div>}
         {result.ai_summary && <div className="mt-2 text-emerald-600/80">{result.ai_summary}</div>}
+        {onBook && (
+          <button
+            onClick={onBook}
+            className="mt-3 w-full py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition-colors"
+          >
+            ✓ Book This Restaurant
+          </button>
+        )}
       </div>
     )
   }
@@ -362,23 +384,48 @@ function getOutcomeMessage(result?: CallResult) {
       <div className="rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-4 text-sm">
         <div className="font-semibold text-blue-700">✨ Table available!</div>
         {result.ai_summary && <div className="mt-1 text-blue-600">{result.ai_summary}</div>}
+        {onBook && (
+          <button
+            onClick={onBook}
+            className="mt-3 w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+          >
+            ✓ Book This Restaurant
+          </button>
+        )}
       </div>
     )
   }
 
-  if (result.outcome === "not_available" && result.alternative_time) {
+  if (result.alternative_time) {
     return (
       <div className="rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 p-4 text-sm">
-        <div className="font-semibold text-amber-700">Alternative time offered</div>
-        <div className="text-amber-600">Available at: {result.alternative_time}</div>
+        <div className="font-semibold text-amber-700">⏰ Alternative time available</div>
+        <div className="text-amber-800 font-medium text-base mt-1">Available at: {result.alternative_time}</div>
         {result.ai_summary && <div className="mt-1 text-amber-600/80">{result.ai_summary}</div>}
+        {onBook && (
+          <button
+            onClick={onBook}
+            className="mt-3 w-full py-2 px-4 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg transition-colors"
+          >
+            Book for {result.alternative_time}
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  if (result.outcome === "not_available") {
+    return (
+      <div className="rounded-lg bg-zinc-100 border border-zinc-200 p-3 text-sm text-zinc-500">
+        <div className="font-medium">No availability at requested time</div>
+        {result.ai_summary && <div className="mt-1 text-zinc-400">{result.ai_summary}</div>}
       </div>
     )
   }
 
   if (result.ai_summary) {
     return (
-      <div className="rounded-lg bg-zinc-100 border border-zinc-200 p-4 text-sm">
+      <div className="rounded-lg bg-zinc-100 border border-zinc-200 p-4 text-sm text-zinc-600">
         {result.ai_summary}
       </div>
     )
@@ -1021,15 +1068,16 @@ export default function BatchStatusPage() {
                       </div>
                     )
                   ) : (
-                    <Button
-                      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                      className="w-full h-14 text-lg font-semibold bg-white text-emerald-700 hover:bg-white/90 shadow-lg"
-                    >
-                      <Check className="h-5 w-5 mr-2" />
-                      {available > 0
-                        ? `🎉 See ${available} Available Option${available > 1 ? 's' : ''}`
-                        : "View Call Details"}
-                    </Button>
+                    // Results are unlocked - just show helpful message
+                    <div className="text-center text-white py-2">
+                      <Check className="h-8 w-8 mx-auto mb-2" />
+                      <p className="font-semibold">Results unlocked!</p>
+                      <p className="text-sm text-white/80">
+                        {available > 0
+                          ? `Scroll up to see your ${available} available option${available > 1 ? 's' : ''}`
+                          : "View the details above"}
+                      </p>
+                    </div>
                   )
                 )}
 
@@ -1102,38 +1150,75 @@ export default function BatchStatusPage() {
                   </CardContent>
                 </Card>
               ) : (
-                items.map((item) => {
+                // Sort items: available/hold first, then alternatives, then unavailable
+                [...items].sort((a, b) => {
+                  const getPriority = (item: BatchItem) => {
+                    if (item.result?.outcome === "hold_confirmed") return 0
+                    if (item.result?.outcome === "available") return 1
+                    if (item.result?.alternative_time) return 2
+                    if (item.result?.outcome === "not_available") return 4
+                    return 3 // pending/calling/etc
+                  }
+                  return getPriority(a) - getPriority(b)
+                }).map((item) => {
                   const displayId = item.place_id ?? item.id ?? "unknown"
                   const callStatus = item.status as CallStatus | undefined
                   const showCallStatus = !isReady // Only show call status after calls started
                   const hideOutcome = !canViewResults
+                  
+                  // Determine if this restaurant has availability (for styling)
+                  const hasAvailability = item.result?.outcome === "hold_confirmed" || 
+                                         item.result?.outcome === "available"
+                  const hasAlternative = !!item.result?.alternative_time
+                  const isUnavailable = item.result?.outcome === "not_available" && !hasAlternative
+
+                  // Card styling based on outcome
+                  const getCardClasses = () => {
+                    if (hideOutcome) {
+                      // Before payment: only show calling state, not results
+                      if (item.status === "speaking") {
+                        return "bg-gradient-to-r from-blue-50 to-indigo-50 ring-1 ring-blue-200"
+                      }
+                      if (item.status === "calling") {
+                        return "bg-gradient-to-r from-amber-50 to-orange-50 ring-1 ring-amber-200"
+                      }
+                      return "bg-white/80 backdrop-blur hover:shadow-lg transition-shadow"
+                    }
+                    
+                    // After payment: show result-based styling
+                    if (item.result?.outcome === "hold_confirmed") {
+                      return "bg-gradient-to-r from-green-50 to-emerald-50 ring-2 ring-green-400 shadow-lg shadow-green-100"
+                    }
+                    if (item.result?.outcome === "available") {
+                      return "bg-gradient-to-r from-green-50 to-teal-50 ring-1 ring-green-200"
+                    }
+                    if (hasAlternative) {
+                      return "bg-gradient-to-r from-amber-50 to-orange-50 ring-1 ring-amber-200"
+                    }
+                    if (isUnavailable) {
+                      return "bg-zinc-50 opacity-60"
+                    }
+                    return "bg-white/80 backdrop-blur"
+                  }
+
+                  // Booking handler for this restaurant
+                  const handleBook = () => {
+                    // TODO: Implement actual booking flow
+                    // For now, show alert with restaurant info
+                    alert(`Booking ${item.name}!\n\nThis would:\n1. Confirm your reservation\n2. Release holds at other restaurants\n3. Save your booking details`)
+                  }
 
                   return (
                     <Card
                       key={displayId}
-                      className={`border-0 shadow-md transition-all ${hideOutcome
-                        ? item.status === "speaking"
-                          ? "bg-gradient-to-r from-blue-50 to-indigo-50 ring-1 ring-blue-200"
-                          : item.status === "calling"
-                            ? "bg-gradient-to-r from-amber-50 to-orange-50 ring-1 ring-amber-200"
-                            : "bg-white/80 backdrop-blur hover:shadow-lg transition-shadow"
-                        : item.result?.outcome === "hold_confirmed"
-                          ? "bg-gradient-to-r from-green-50 to-emerald-50 ring-2 ring-green-300 shadow-green-100"
-                          : item.result?.outcome === "available"
-                            ? "bg-gradient-to-r from-green-50 to-teal-50 ring-1 ring-green-200"
-                            : item.status === "speaking"
-                              ? "bg-gradient-to-r from-blue-50 to-indigo-50 ring-1 ring-blue-200"
-                              : item.status === "calling"
-                                ? "bg-gradient-to-r from-amber-50 to-orange-50 ring-1 ring-amber-200"
-                                : "bg-white/80 backdrop-blur hover:shadow-lg transition-shadow"
-                        }`}
+                      className={`border-0 shadow-md transition-all ${getCardClasses()}`}
                     >
                       <CardContent className="p-6">
                         <div className="flex items-start gap-4">
-                          {/* Status icon - only show during/after calls */}
+                          {/* Status icon - only show during/after calls, pass result for correct icon */}
                           {showCallStatus && (
                             <div className="pt-1">
-                              {getStatusIcon(callStatus)}
+                              {getStatusIcon(callStatus, item.result)}
                             </div>
                           )}
 
@@ -1141,7 +1226,7 @@ export default function BatchStatusPage() {
                             {/* Header row */}
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-lg truncate">
+                                <h3 className={`font-semibold text-lg truncate ${isUnavailable && !hideOutcome ? "text-zinc-400" : ""}`}>
                                   {item.name ?? "Unknown restaurant"}
                                 </h3>
                                 <div className="flex items-center gap-4 mt-1 flex-wrap">
@@ -1159,7 +1244,7 @@ export default function BatchStatusPage() {
 
                             {/* Address */}
                             {item.address && (
-                              <div className="flex items-center gap-1.5 mt-2 text-sm text-muted-foreground">
+                              <div className={`flex items-center gap-1.5 mt-2 text-sm ${isUnavailable && !hideOutcome ? "text-zinc-400" : "text-muted-foreground"}`}>
                                 <MapPin className="h-3.5 w-3.5 shrink-0" />
                                 <span className="truncate">{item.address}</span>
                               </div>
@@ -1172,7 +1257,9 @@ export default function BatchStatusPage() {
                                   <Badge
                                     key={type}
                                     variant="secondary"
-                                    className="text-xs bg-red-50 text-red-700 border border-red-200 hover:bg-red-100"
+                                    className={`text-xs ${isUnavailable && !hideOutcome 
+                                      ? "bg-zinc-100 text-zinc-400 border border-zinc-200" 
+                                      : "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100"}`}
                                   >
                                     {type.replace(/_/g, " ")}
                                   </Badge>
@@ -1180,10 +1267,13 @@ export default function BatchStatusPage() {
                               </div>
                             )}
 
-                            {/* Call result - only after calls */}
+                            {/* Call result - only after calls, pass booking handler for available items */}
                             {showCallStatus && item.result && !hideOutcome && (
                               <div className="mt-4">
-                                {getOutcomeMessage(item.result)}
+                                {getOutcomeMessage(
+                                  item.result, 
+                                  (hasAvailability || hasAlternative) ? handleBook : undefined
+                                )}
                               </div>
                             )}
                           </div>
