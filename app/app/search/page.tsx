@@ -219,8 +219,17 @@ export default function SearchPage() {
     setError(null)
     setDebugResponse(null)
 
+    // Require user to be logged in to search
+    if (!user) {
+      setLoading(false)
+      // Redirect to sign up with return URL
+      const returnUrl = `/app/search?craving=${encodeURIComponent(cravingText)}&location=${encodeURIComponent(location)}&partySize=${partySize}&date=${date}&time=${time}`
+      router.push(`/signup?returnUrl=${encodeURIComponent(returnUrl)}`)
+      return
+    }
+
     // If phone was entered and not yet saved, save it to profile
-    if (user && phoneNumber && !hasPhoneSaved && isValidPhoneNumber(phoneNumber)) {
+    if (phoneNumber && !hasPhoneSaved && isValidPhoneNumber(phoneNumber)) {
       try {
         await saveUserProfile(user.uid, { phoneNumber })
         setHasPhoneSaved(true)
@@ -427,28 +436,65 @@ export default function SearchPage() {
                     Time
                   </label>
 
-                  {/* Quick select time buttons - prime dinner hours */}
-                  <div className="grid grid-cols-4 gap-2">
-                    {['17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00', '22:30'].map(t => {
-                      const opt = availableTimeOptions.find(o => o.value === t)
-                      if (!opt) return null // Skip if time is in the past
-
-                      const isSelected = time === t
+                  {/* Quick select time buttons - show available times from common dining hours */}
+                  {(() => {
+                    // All common dining time slots
+                    const allDiningTimes = [
+                      '11:30', '12:00', '12:30', '13:00', // Lunch
+                      '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00' // Dinner
+                    ]
+                    
+                    // Filter to available times and take first 12
+                    const availableDiningTimes = allDiningTimes
+                      .filter(t => availableTimeOptions.find(o => o.value === t))
+                      .slice(0, 12)
+                    
+                    // If no times available today (it's late), suggest changing the date
+                    if (availableDiningTimes.length === 0) {
                       return (
-                        <button
-                          key={t}
-                          type="button"
-                          onClick={() => setTime(t)}
-                          className={`py-2.5 px-2 text-sm font-medium rounded-lg border transition-all ${isSelected
-                            ? 'bg-red-500 text-white border-red-500 shadow-md'
-                            : 'bg-white text-zinc-700 border-zinc-200 hover:border-red-300 hover:bg-red-50'
-                            }`}
-                        >
-                          {opt.label}
-                        </button>
+                        <div className="p-4 text-center text-sm text-zinc-500 bg-zinc-50 rounded-lg border border-zinc-200">
+                          <p className="mb-2">It's getting late! No dining times left for today.</p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // Set date to tomorrow
+                              const tomorrow = new Date()
+                              tomorrow.setDate(tomorrow.getDate() + 1)
+                              const y = tomorrow.getFullYear()
+                              const m = (tomorrow.getMonth() + 1).toString().padStart(2, '0')
+                              const d = tomorrow.getDate().toString().padStart(2, '0')
+                              setDate(`${y}-${m}-${d}`)
+                            }}
+                            className="text-red-600 hover:text-red-700 font-medium underline"
+                          >
+                            Search for tomorrow instead →
+                          </button>
+                        </div>
                       )
-                    })}
-                  </div>
+                    }
+                    
+                    return (
+                      <div className="grid grid-cols-4 gap-2">
+                        {availableDiningTimes.map(t => {
+                          const opt = availableTimeOptions.find(o => o.value === t)!
+                          const isSelected = time === t
+                          return (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => setTime(t)}
+                              className={`py-2.5 px-2 text-sm font-medium rounded-lg border transition-all ${isSelected
+                                ? 'bg-red-500 text-white border-red-500 shadow-md'
+                                : 'bg-red-50 text-red-700 border-red-100 hover:border-red-300 hover:bg-red-100'
+                                }`}
+                            >
+                              {opt.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )
+                  })()}
 
                   {/* "Other time" expandable section */}
                   <details className="group">
