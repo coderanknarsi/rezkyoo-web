@@ -183,8 +183,9 @@ function RestaurantCard({ item, index, isActive }: {
 type CallStatus = "pending" | "calling" | "speaking" | "completed" | "failed" | "no_answer" | "skipped" | "error"
 
 type CallResult = {
-  outcome?: "available" | "not_available" | "hold_confirmed" | "voicemail" | "no_answer" | "failed"
+  outcome?: "available" | "not_available" | "hold_confirmed" | "voicemail" | "no_answer" | "failed" | "alternative"
   alternative_time?: string
+  alt_time?: string  // Alias for alternative_time
   ai_summary?: string
   time_held?: string
   perks?: string
@@ -198,6 +199,10 @@ type EnrichedPlaceData = {
   formatted_phone_number?: string
   website?: string
   url?: string  // Google Maps URL
+  editorial_summary?: {
+    overview?: string
+    language?: string
+  }
   reviews?: Array<{
     author_name: string
     rating: number
@@ -236,7 +241,7 @@ function getStatusIcon(status?: CallStatus, result?: CallResult) {
       return <Check className="h-5 w-5 text-emerald-500" />
     }
     if (result.outcome === "not_available") {
-      if (result.alternative_time) {
+      if (result.alternative_time || result.alt_time) {
         return <AlertCircle className="h-5 w-5 text-amber-500" />
       }
       return <XCircle className="h-5 w-5 text-zinc-400" />
@@ -379,8 +384,26 @@ function RatingStars({ rating, count }: { rating?: number; count?: number }) {
   )
 }
 
-function getOutcomeMessage(result?: CallResult, onBook?: () => void) {
+type ReservationDetails = {
+  date?: string
+  time?: string
+  party_size?: number
+}
+
+function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation?: ReservationDetails) {
   if (!result) return null
+
+  // Format reservation details for display
+  const reservationInfo = reservation && (reservation.date || reservation.time || reservation.party_size) ? (
+    <div className="mt-2 p-2 rounded bg-white/50 border border-current/10 text-xs">
+      <div className="font-medium mb-1">Reservation Details:</div>
+      <div className="flex flex-wrap gap-x-3 gap-y-1">
+        {reservation.date && <span>📅 {reservation.date}</span>}
+        {reservation.time && <span>🕐 {formatTime12Hour(reservation.time)}</span>}
+        {reservation.party_size && <span>👥 {reservation.party_size} guest{reservation.party_size > 1 ? 's' : ''}</span>}
+      </div>
+    </div>
+  ) : null
 
   if (result.outcome === "hold_confirmed") {
     return (
@@ -389,6 +412,7 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void) {
         {result.time_held && <div className="text-emerald-600">Held until: {result.time_held}</div>}
         {result.perks && <div className="mt-1 text-emerald-600">Perks: {result.perks}</div>}
         {result.ai_summary && <div className="mt-2 text-emerald-600/80">{result.ai_summary}</div>}
+        {reservationInfo}
         {onBook && (
           <button
             onClick={onBook}
@@ -406,6 +430,7 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void) {
       <div className="rounded-lg bg-gradient-to-r from-rose-50 to-orange-50 border border-orange-200 p-4 text-sm">
         <div className="font-semibold text-orange-700">✨ Table available!</div>
         {result.ai_summary && <div className="mt-1 text-orange-600">{result.ai_summary}</div>}
+        {reservationInfo}
         {onBook && (
           <button
             onClick={onBook}
@@ -418,18 +443,29 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void) {
     )
   }
 
-  if (result.alternative_time) {
+  const altTime = result.alternative_time || result.alt_time
+  if (altTime) {
     return (
       <div className="rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 p-4 text-sm">
         <div className="font-semibold text-amber-700">⏰ Alternative time available</div>
-        <div className="text-amber-800 font-medium text-base mt-1">Available at: {result.alternative_time}</div>
+        <div className="text-amber-800 font-medium text-base mt-1">Available at: {altTime}</div>
         {result.ai_summary && <div className="mt-1 text-amber-600/80">{result.ai_summary}</div>}
+        {reservation && (reservation.date || reservation.party_size) && (
+          <div className="mt-2 p-2 rounded bg-white/50 border border-amber-200/50 text-xs text-amber-700">
+            <div className="font-medium mb-1">Original Request:</div>
+            <div className="flex flex-wrap gap-x-3 gap-y-1">
+              {reservation.date && <span>📅 {reservation.date}</span>}
+              {reservation.time && <span>🕐 {formatTime12Hour(reservation.time)} (requested)</span>}
+              {reservation.party_size && <span>👥 {reservation.party_size} guest{reservation.party_size > 1 ? 's' : ''}</span>}
+            </div>
+          </div>
+        )}
         {onBook && (
           <button
             onClick={onBook}
             className="mt-3 w-full py-2 px-4 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg transition-colors"
           >
-            Book for {result.alternative_time}
+            Book for {altTime}
           </button>
         )}
       </div>
@@ -593,7 +629,7 @@ export default function BatchStatusPage() {
         item.place_id && 
         (item.result?.outcome === "available" || 
          item.result?.outcome === "hold_confirmed" || 
-         item.result?.alternative_time)
+         item.result?.alternative_time || item.result?.alt_time)
       )
       .map(item => item.place_id!)
 
@@ -784,6 +820,12 @@ export default function BatchStatusPage() {
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-100 text-red-700">
                     <RefreshCw className="h-4 w-4 animate-spin" />
                     <span className="text-sm font-medium">Live</span>
+                  </div>
+                )}
+                {isCompleted && canViewResults && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700">
+                    <Check className="h-4 w-4" />
+                    <span className="text-sm font-medium">Unlocked</span>
                   </div>
                 )}
               </div>
@@ -1040,8 +1082,8 @@ export default function BatchStatusPage() {
             </CardContent>
           </Card>
 
-          {/* Action Button - Changes based on state */}
-          {items.length > 0 && (
+          {/* Action Button - Changes based on state - Hide when results are unlocked */}
+          {items.length > 0 && !(isCompleted && canViewResults) && (
             <Card className={`border-0 shadow-lg ${isCalling ? "bg-gradient-to-r from-amber-500 to-orange-500" :
               isCompleted ? "bg-white/95 ring-1 ring-zinc-200" :
                 "bg-gradient-to-r from-red-500 to-red-600"
@@ -1136,18 +1178,7 @@ export default function BatchStatusPage() {
                         </Button>
                       </div>
                     )
-                  ) : (
-                    // Results are unlocked - just show helpful message
-                    <div className="text-center text-zinc-800 py-2">
-                      <Check className="h-8 w-8 mx-auto mb-2" />
-                      <p className="font-semibold">Results unlocked!</p>
-                      <p className="text-sm text-zinc-500">
-                        {available > 0
-                          ? `Scroll up to see your ${available} available option${available > 1 ? 's' : ''}`
-                          : "View the details above"}
-                      </p>
-                    </div>
-                  )
+                  ) : null
                 )}
 
                 {/* STATE: Found (not started) - Show "Check Availability" */}
@@ -1204,7 +1235,7 @@ export default function BatchStatusPage() {
           {isCompleted && canViewResults && available > 0 && (() => {
             const availableRestaurants = items.filter(item => 
               item.lat && item.lng && 
-              (item.result?.outcome === "available" || item.result?.outcome === "hold_confirmed" || item.result?.alternative_time)
+              (item.result?.outcome === "available" || item.result?.outcome === "hold_confirmed" || item.result?.alternative_time || item.result?.alt_time)
             )
             if (availableRestaurants.length === 0) return null
             
@@ -1265,7 +1296,7 @@ export default function BatchStatusPage() {
                   const getPriority = (item: BatchItem) => {
                     if (item.result?.outcome === "hold_confirmed") return 0
                     if (item.result?.outcome === "available") return 1
-                    if (item.result?.alternative_time) return 2
+                    if (item.result?.alternative_time || item.result?.alt_time) return 2
                     if (item.result?.outcome === "not_available") return 4
                     return 3 // pending/calling/etc
                   }
@@ -1279,7 +1310,7 @@ export default function BatchStatusPage() {
                   // Determine if this restaurant has availability (for styling)
                   const hasAvailability = item.result?.outcome === "hold_confirmed" || 
                                          item.result?.outcome === "available"
-                  const hasAlternative = !!item.result?.alternative_time
+                  const hasAlternative = !!(item.result?.alternative_time || item.result?.alt_time)
                   const isUnavailable = item.result?.outcome === "not_available" && !hasAlternative
 
                   // Card styling based on outcome
@@ -1295,18 +1326,18 @@ export default function BatchStatusPage() {
                       return "bg-white/80 backdrop-blur hover:shadow-lg transition-shadow"
                     }
                     
-                    // After payment: show result-based styling
+                    // After payment: show result-based styling - cleaner white cards
                     if (item.result?.outcome === "hold_confirmed") {
-                      return "bg-gradient-to-r from-green-50 to-emerald-50 ring-2 ring-green-400 shadow-lg shadow-green-100"
+                      return "bg-white border-l-4 border-l-red-500 shadow-lg"
                     }
                     if (item.result?.outcome === "available") {
-                      return "bg-gradient-to-r from-green-50 to-teal-50 ring-1 ring-green-200"
+                      return "bg-white border-l-4 border-l-orange-500 shadow-md"
                     }
                     if (hasAlternative) {
-                      return "bg-gradient-to-r from-amber-50 to-orange-50 ring-1 ring-amber-200"
+                      return "bg-white border-l-4 border-l-amber-400 shadow-md"
                     }
                     if (isUnavailable) {
-                      return "bg-zinc-50 opacity-60"
+                      return "bg-zinc-50/80 opacity-60"
                     }
                     return "bg-white/80 backdrop-blur"
                   }
@@ -1378,16 +1409,16 @@ export default function BatchStatusPage() {
                             )}
 
                             {/* Premium info for available restaurants - only after payment */}
-                            {!hideOutcome && hasAvailability && item.place_id && (() => {
+                            {!hideOutcome && (hasAvailability || hasAlternative) && item.place_id && (() => {
                               const enriched = enrichedData[item.place_id]
                               if (!enriched && !isEnriching) return null
                               
                               return (
-                                <div className="mt-4 p-4 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200">
+                                <div className="mt-4 p-4 rounded-lg bg-zinc-50 border border-zinc-200">
                                   {isEnriching && !enriched ? (
-                                    <div className="flex items-center gap-2 text-sm text-green-600">
+                                    <div className="flex items-center gap-2 text-sm text-zinc-500">
                                       <RefreshCw className="h-4 w-4 animate-spin" />
-                                      Loading restaurant details...
+                                      Loading details...
                                     </div>
                                   ) : enriched && (
                                     <>
@@ -1405,7 +1436,7 @@ export default function BatchStatusPage() {
                                         {/* Price level */}
                                         {enriched.price_level !== undefined && enriched.price_level > 0 && (
                                           <span className="font-semibold">
-                                            <span className="text-green-700">{'$'.repeat(enriched.price_level)}</span>
+                                            <span className="text-zinc-700">{'$'.repeat(enriched.price_level)}</span>
                                             <span className="text-zinc-300">{'$'.repeat(Math.max(0, 4 - enriched.price_level))}</span>
                                           </span>
                                         )}
@@ -1415,7 +1446,7 @@ export default function BatchStatusPage() {
                                             href={enriched.website} 
                                             target="_blank" 
                                             rel="noopener noreferrer"
-                                            className="text-green-600 hover:text-green-700 underline"
+                                            className="text-red-600 hover:text-red-700 underline"
                                           >
                                             Website
                                           </a>
@@ -1425,29 +1456,35 @@ export default function BatchStatusPage() {
                                             href={enriched.url} 
                                             target="_blank" 
                                             rel="noopener noreferrer"
-                                            className="text-green-600 hover:text-green-700 underline"
+                                            className="text-red-600 hover:text-red-700 underline"
                                           >
                                             View on Maps
                                           </a>
                                         )}
                                       </div>
                                       
-                                      {/* Top review */}
-                                      {enriched.reviews && enriched.reviews.length > 0 && (
-                                        <div className="mt-3 p-3 bg-white/60 rounded-lg border border-green-100">
-                                          <div className="flex items-center gap-2 text-xs text-zinc-500 mb-1">
-                                            <span className="font-medium">{enriched.reviews[0].author_name}</span>
-                                            <span>•</span>
-                                            <span className="flex items-center gap-0.5">
-                                              <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
-                                              {enriched.reviews[0].rating}
-                                            </span>
-                                            <span>•</span>
-                                            <span>{enriched.reviews[0].relative_time_description}</span>
-                                          </div>
-                                          <p className="text-sm text-zinc-700 line-clamp-2">
-                                            "{enriched.reviews[0].text}"
-                                          </p>
+                                      {/* Place summary - prefer editorial, fall back to review */}
+                                      {(enriched.editorial_summary?.overview || (enriched.reviews && enriched.reviews.length > 0)) && (
+                                        <div className="mt-3 p-3 bg-white rounded-lg border border-zinc-100">
+                                          {enriched.editorial_summary?.overview ? (
+                                            <p className="text-sm text-zinc-600">{enriched.editorial_summary.overview}</p>
+                                          ) : enriched.reviews && enriched.reviews[0] ? (
+                                            <>
+                                              <div className="flex items-center gap-2 text-xs text-zinc-500 mb-1">
+                                                <span className="font-medium">{enriched.reviews[0].author_name}</span>
+                                                <span>•</span>
+                                                <span className="flex items-center gap-0.5">
+                                                  <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
+                                                  {enriched.reviews[0].rating}
+                                                </span>
+                                                <span>•</span>
+                                                <span>{enriched.reviews[0].relative_time_description}</span>
+                                              </div>
+                                              <p className="text-sm text-zinc-600 line-clamp-2 italic">
+                                                "{enriched.reviews[0].text}"
+                                              </p>
+                                            </>
+                                          ) : null}
                                         </div>
                                       )}
                                     </>
@@ -1461,7 +1498,8 @@ export default function BatchStatusPage() {
                               <div className="mt-4">
                                 {getOutcomeMessage(
                                   item.result, 
-                                  (hasAvailability || hasAlternative) ? handleBook : undefined
+                                  (hasAvailability || hasAlternative) ? handleBook : undefined,
+                                  query ? { date: query.date, time: query.time, party_size: query.party_size } : undefined
                                 )}
                               </div>
                             )}

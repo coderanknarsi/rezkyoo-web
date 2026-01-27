@@ -13,6 +13,10 @@ type PlaceDetails = {
   formatted_phone_number?: string
   website?: string
   url?: string  // Google Maps URL
+  editorial_summary?: {
+    overview?: string
+    language?: string
+  }
   reviews?: Array<{
     author_name: string
     rating: number
@@ -41,6 +45,7 @@ async function fetchPlaceDetails(placeId: string): Promise<PlaceDetails | null> 
       "formatted_phone_number",
       "website",
       "url",
+      "editorial_summary",
       "reviews",
       "opening_hours",
     ].join(",")
@@ -63,6 +68,7 @@ async function fetchPlaceDetails(placeId: string): Promise<PlaceDetails | null> 
       formatted_phone_number: data.result.formatted_phone_number,
       website: data.result.website,
       url: data.result.url,
+      editorial_summary: data.result.editorial_summary,
       reviews: data.result.reviews?.slice(0, 3),  // Only first 3 reviews
       opening_hours: data.result.opening_hours,
     }

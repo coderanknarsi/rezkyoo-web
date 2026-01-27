@@ -113,7 +113,7 @@ export function readSimBatch(batchId: string) {
         : item.outcome === "available"
           ? { outcome: "available", ai_summary: "We can accommodate the requested time." }
           : item.outcome === "alternative"
-            ? { outcome: "alternative", ai_summary: "Only earlier seating available.", alt_time: "6:30 PM" }
+            ? { outcome: "not_available", alternative_time: "6:30 PM", ai_summary: "Only earlier seating available." }
             : { outcome: "not_available", ai_summary: "No availability at requested time." }
 
     return {
