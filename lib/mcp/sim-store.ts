@@ -5,6 +5,11 @@ type BackendItem = {
   phone?: string
   status?: string
   result?: any
+  // Basic location info (from initial search)
+  lat?: number
+  lng?: number
+  address?: string
+  types?: string[]
 }
 
 type SimItemPlan = {
@@ -14,6 +19,11 @@ type SimItemPlan = {
   phone?: string
   timeline: { callingAt: number; speakingAt: number; completedAt: number }
   outcome: "available" | "not_available" | "alternative"
+  // Basic location info
+  lat?: number
+  lng?: number
+  address?: string
+  types?: string[]
 }
 
 type SimBatch = {
@@ -49,6 +59,11 @@ function buildPlan(item: BackendItem, now: number): SimItemPlan {
     phone: item.phone,
     timeline: { callingAt, speakingAt, completedAt },
     outcome,
+    // Preserve basic location info
+    lat: item.lat,
+    lng: item.lng,
+    address: item.address,
+    types: item.types,
   }
 }
 
@@ -78,6 +93,11 @@ export function readSimBatch(batchId: string) {
         status: "skipped",
         skip_reason: "no_phone",
         result: { outcome: "skipped" },
+        // Preserve basic location info
+        lat: item.lat,
+        lng: item.lng,
+        address: item.address,
+        types: item.types,
       }
     }
 
@@ -103,6 +123,11 @@ export function readSimBatch(batchId: string) {
       phone: item.phone,
       status,
       result,
+      // Preserve basic location info
+      lat: item.lat,
+      lng: item.lng,
+      address: item.address,
+      types: item.types,
     }
   })
 
@@ -110,9 +135,17 @@ export function readSimBatch(batchId: string) {
     ["completed", "skipped"].includes(i.status as string)
   )
 
+  // Calculate map center from restaurant locations
+  const itemsWithCoords = items.filter(i => i.lat && i.lng)
+  const mapCenter = itemsWithCoords.length > 0 ? {
+    lat: itemsWithCoords.reduce((sum, i) => sum + (i.lat || 0), 0) / itemsWithCoords.length,
+    lng: itemsWithCoords.reduce((sum, i) => sum + (i.lng || 0), 0) / itemsWithCoords.length,
+  } : undefined
+
   return {
     ok: true,
     status: allDone ? "completed" : "calling",
     items,
+    map_center: mapCenter,
   }
 }

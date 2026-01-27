@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Phone, PhoneCall, PhoneOff, Check, Star, AlertCircle, RefreshCw, MapPin, Lock, MessageSquare } from "lucide-react"
+import { Phone, PhoneCall, Check, Star, AlertCircle, RefreshCw, MapPin, Lock, MessageSquare, XCircle } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -190,6 +190,26 @@ type CallResult = {
   perks?: string
 }
 
+type EnrichedPlaceData = {
+  place_id: string
+  rating?: number
+  user_ratings_total?: number
+  price_level?: number
+  formatted_phone_number?: string
+  website?: string
+  url?: string  // Google Maps URL
+  reviews?: Array<{
+    author_name: string
+    rating: number
+    text: string
+    relative_time_description: string
+  }>
+  opening_hours?: {
+    open_now?: boolean
+    weekday_text?: string[]
+  }
+}
+
 type BatchItem = {
   id?: string
   place_id?: string
@@ -197,11 +217,13 @@ type BatchItem = {
   phone?: string
   types?: string[]
   address?: string
-  rating?: number
-  user_ratings_total?: number
+  rating?: number  // May not be available until premium fetch
+  user_ratings_total?: number  // May not be available until premium fetch
+  price_level?: number  // May not be available until premium fetch
+  opening_hours?: { open_now?: boolean }
   status?: CallStatus
   result?: CallResult
-  distance_miles?: number
+  distance_miles?: number  // May not be available until premium fetch
   lat?: number
   lng?: number
   startedAt?: number  // Epoch ms when call started
@@ -217,9 +239,9 @@ function getStatusIcon(status?: CallStatus, result?: CallResult) {
       if (result.alternative_time) {
         return <AlertCircle className="h-5 w-5 text-amber-500" />
       }
-      return <PhoneOff className="h-5 w-5 text-zinc-400" />
+      return <XCircle className="h-5 w-5 text-zinc-400" />
     }
-    return <PhoneOff className="h-5 w-5 text-zinc-400" />
+    return <XCircle className="h-5 w-5 text-zinc-400" />
   }
   
   switch (status) {
@@ -228,11 +250,11 @@ function getStatusIcon(status?: CallStatus, result?: CallResult) {
     case "speaking":
       return <MessageSquare className="h-5 w-5 text-blue-500 animate-pulse" />
     case "completed":
-      return <Check className="h-5 w-5 text-emerald-500" />
+      return <Check className="h-5 w-5 text-zinc-400" />
     case "failed":
     case "no_answer":
     case "error":
-      return <PhoneOff className="h-5 w-5 text-red-500" />
+      return <XCircle className="h-5 w-5 text-zinc-400" />
     case "skipped":
       return <Phone className="h-5 w-5 text-zinc-300" />
     default:
@@ -381,13 +403,13 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void) {
 
   if (result.outcome === "available") {
     return (
-      <div className="rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-4 text-sm">
-        <div className="font-semibold text-blue-700">✨ Table available!</div>
-        {result.ai_summary && <div className="mt-1 text-blue-600">{result.ai_summary}</div>}
+      <div className="rounded-lg bg-gradient-to-r from-rose-50 to-orange-50 border border-orange-200 p-4 text-sm">
+        <div className="font-semibold text-orange-700">✨ Table available!</div>
+        {result.ai_summary && <div className="mt-1 text-orange-600">{result.ai_summary}</div>}
         {onBook && (
           <button
             onClick={onBook}
-            className="mt-3 w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+            className="mt-3 w-full py-2 px-4 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors"
           >
             ✓ Book This Restaurant
           </button>
@@ -450,6 +472,8 @@ export default function BatchStatusPage() {
   const [isStartingCalls, setIsStartingCalls] = React.useState(false)
   const [mapUrl, setMapUrl] = React.useState<string | null>(null)
   const [userLocation, setUserLocation] = React.useState<{ lat: number; lng: number } | null>(null)
+  const [enrichedData, setEnrichedData] = React.useState<Record<string, EnrichedPlaceData>>({})
+  const [isEnriching, setIsEnriching] = React.useState(false)
   const [query, setQuery] = React.useState<{
     location?: string
     party_size?: number
@@ -551,6 +575,51 @@ export default function BatchStatusPage() {
       return () => clearInterval(interval)
     }
   }, [fetchStatus, status])
+
+  // Fetch premium data from Google Places API after payment
+  // Only fetches for available restaurants to minimize API costs
+  React.useEffect(() => {
+    const canViewResults = !paywallRequired
+    const isCompleted = status === "completed"
+    
+    // Only fetch if: completed, paid, have items, and haven't already fetched
+    if (!isCompleted || !canViewResults || items.length === 0 || isEnriching || Object.keys(enrichedData).length > 0) {
+      return
+    }
+
+    // Get place_ids of available restaurants only
+    const availablePlaceIds = items
+      .filter(item => 
+        item.place_id && 
+        (item.result?.outcome === "available" || 
+         item.result?.outcome === "hold_confirmed" || 
+         item.result?.alternative_time)
+      )
+      .map(item => item.place_id!)
+
+    if (availablePlaceIds.length === 0) return
+
+    const fetchEnrichedData = async () => {
+      setIsEnriching(true)
+      try {
+        const response = await fetch("/api/places/enrich", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ place_ids: availablePlaceIds }),
+        })
+        const result = await response.json()
+        if (result.ok && result.data) {
+          setEnrichedData(result.data)
+        }
+      } catch (err) {
+        console.error("Failed to fetch enriched data:", err)
+      } finally {
+        setIsEnriching(false)
+      }
+    }
+
+    fetchEnrichedData()
+  }, [status, paywallRequired, items, isEnriching, enrichedData])
 
   // Handle "Check Availability" click
   const handleCheckAvailability = async () => {
@@ -974,7 +1043,7 @@ export default function BatchStatusPage() {
           {/* Action Button - Changes based on state */}
           {items.length > 0 && (
             <Card className={`border-0 shadow-lg ${isCalling ? "bg-gradient-to-r from-amber-500 to-orange-500" :
-              isCompleted ? "bg-gradient-to-r from-emerald-500 to-teal-500" :
+              isCompleted ? "bg-white/95 ring-1 ring-zinc-200" :
                 "bg-gradient-to-r from-red-500 to-red-600"
               }`}>
               <CardContent className="p-4">
@@ -1006,41 +1075,41 @@ export default function BatchStatusPage() {
                         </div>
 
                         {/* Success message - tease value */}
-                        <div className="bg-white/10 rounded-lg p-3 text-white text-center">
+                        <div className="bg-white rounded-lg p-3 text-zinc-800 text-center border border-emerald-200">
                           <h4 className="font-semibold text-lg mb-1">🎉 Great news!</h4>
-                          <p className="text-white/90">
-                            We found <span className="font-bold text-emerald-300">{available} restaurant{available > 1 ? 's' : ''}</span> with availability!
+                          <p className="text-zinc-600">
+                            We found <span className="font-bold text-emerald-700">{available} restaurant{available > 1 ? 's' : ''}</span> with availability!
                           </p>
                           {holdsConfirmed > 0 && (
-                            <p className="text-amber-300 text-sm mt-1">
+                            <p className="text-amber-600 text-sm mt-1">
                               {holdsConfirmed} already holding a table for you
                             </p>
                           )}
                         </div>
 
                         {/* What you're unlocking */}
-                        <div className="bg-white/10 rounded-lg p-3 text-white">
-                          <h4 className="font-semibold text-center mb-2">🔓 Unlock to see:</h4>
-                          <ul className="text-sm space-y-1 text-white/90">
+                        <div className="bg-white rounded-lg p-3 text-zinc-700 border border-zinc-200">
+                          <h4 className="font-semibold text-center mb-2 text-zinc-800">🔓 Unlock to see:</h4>
+                          <ul className="text-sm space-y-1 text-zinc-600">
                             <li className="flex items-center gap-2">
-                              <Check className="h-4 w-4 text-emerald-300" />
+                              <Check className="h-4 w-4 text-emerald-600" />
                               Which restaurants are available
                             </li>
                             <li className="flex items-center gap-2">
-                              <Check className="h-4 w-4 text-emerald-300" />
+                              <Check className="h-4 w-4 text-emerald-600" />
                               Contact info & booking details
                             </li>
                             <li className="flex items-center gap-2">
-                              <Check className="h-4 w-4 text-emerald-300" />
+                              <Check className="h-4 w-4 text-emerald-600" />
                               Alternative time suggestions
                             </li>
                           </ul>
                         </div>
 
                         {/* Price callout */}
-                        <div className="text-center text-white">
+                        <div className="text-center text-zinc-900">
                           <span className="text-2xl font-bold">$2.99</span>
-                          <span className="text-white/70 text-sm ml-2">one-time unlock</span>
+                          <span className="text-zinc-500 text-sm ml-2">one-time unlock</span>
                         </div>
 
                         {/* PayPal Buttons */}
@@ -1069,10 +1138,10 @@ export default function BatchStatusPage() {
                     )
                   ) : (
                     // Results are unlocked - just show helpful message
-                    <div className="text-center text-white py-2">
+                    <div className="text-center text-zinc-800 py-2">
                       <Check className="h-8 w-8 mx-auto mb-2" />
                       <p className="font-semibold">Results unlocked!</p>
-                      <p className="text-sm text-white/80">
+                      <p className="text-sm text-zinc-500">
                         {available > 0
                           ? `Scroll up to see your ${available} available option${available > 1 ? 's' : ''}`
                           : "View the details above"}
@@ -1130,6 +1199,47 @@ export default function BatchStatusPage() {
               </CardContent>
             </Card>
           )}
+
+          {/* Map showing available restaurants - only after payment */}
+          {isCompleted && canViewResults && available > 0 && (() => {
+            const availableRestaurants = items.filter(item => 
+              item.lat && item.lng && 
+              (item.result?.outcome === "available" || item.result?.outcome === "hold_confirmed" || item.result?.alternative_time)
+            )
+            if (availableRestaurants.length === 0) return null
+            
+            // Use userLocation if available, otherwise center on first available restaurant
+            const mapCenter = userLocation || {
+              lat: availableRestaurants[0].lat!,
+              lng: availableRestaurants[0].lng!
+            }
+            
+            return (
+              <Card className="border-0 shadow-lg overflow-hidden">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <MapPin className="h-5 w-5 text-red-500" />
+                    Available Restaurants Near You
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <DynamicCallMap
+                    renderPhase="process"
+                    center={mapCenter}
+                    userLocation={userLocation || undefined}
+                    activeRestaurantId={null}
+                    restaurants={availableRestaurants.map((item, idx) => ({
+                      id: item.id || item.place_id || item.name || '',
+                      name: item.name || 'Unknown',
+                      lat: item.lat!,
+                      lng: item.lng!,
+                      index: idx + 1,
+                    }))}
+                  />
+                </CardContent>
+              </Card>
+            )
+          })()}
 
           {/* Restaurant list - hidden during calls to reduce clutter */}
           {!isCalling && (
@@ -1218,7 +1328,7 @@ export default function BatchStatusPage() {
                           {/* Status icon - only show during/after calls, pass result for correct icon */}
                           {showCallStatus && (
                             <div className="pt-1">
-                              {getStatusIcon(callStatus, item.result)}
+                              {getStatusIcon(callStatus, hideOutcome ? undefined : item.result)}
                             </div>
                           )}
 
@@ -1266,6 +1376,85 @@ export default function BatchStatusPage() {
                                 ))}
                               </div>
                             )}
+
+                            {/* Premium info for available restaurants - only after payment */}
+                            {!hideOutcome && hasAvailability && item.place_id && (() => {
+                              const enriched = enrichedData[item.place_id]
+                              if (!enriched && !isEnriching) return null
+                              
+                              return (
+                                <div className="mt-4 p-4 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200">
+                                  {isEnriching && !enriched ? (
+                                    <div className="flex items-center gap-2 text-sm text-green-600">
+                                      <RefreshCw className="h-4 w-4 animate-spin" />
+                                      Loading restaurant details...
+                                    </div>
+                                  ) : enriched && (
+                                    <>
+                                      <div className="flex flex-wrap items-center gap-4 text-sm">
+                                        {/* Rating with stars */}
+                                        {enriched.rating && (
+                                          <div className="flex items-center gap-1.5">
+                                            <Star className="h-5 w-5 text-amber-400 fill-amber-400" />
+                                            <span className="font-bold text-zinc-800">{enriched.rating.toFixed(1)}</span>
+                                            {enriched.user_ratings_total && (
+                                              <span className="text-zinc-500">({enriched.user_ratings_total.toLocaleString()} reviews)</span>
+                                            )}
+                                          </div>
+                                        )}
+                                        {/* Price level */}
+                                        {enriched.price_level !== undefined && enriched.price_level > 0 && (
+                                          <span className="font-semibold">
+                                            <span className="text-green-700">{'$'.repeat(enriched.price_level)}</span>
+                                            <span className="text-zinc-300">{'$'.repeat(Math.max(0, 4 - enriched.price_level))}</span>
+                                          </span>
+                                        )}
+                                        {/* Links */}
+                                        {enriched.website && (
+                                          <a 
+                                            href={enriched.website} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="text-green-600 hover:text-green-700 underline"
+                                          >
+                                            Website
+                                          </a>
+                                        )}
+                                        {enriched.url && (
+                                          <a 
+                                            href={enriched.url} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="text-green-600 hover:text-green-700 underline"
+                                          >
+                                            View on Maps
+                                          </a>
+                                        )}
+                                      </div>
+                                      
+                                      {/* Top review */}
+                                      {enriched.reviews && enriched.reviews.length > 0 && (
+                                        <div className="mt-3 p-3 bg-white/60 rounded-lg border border-green-100">
+                                          <div className="flex items-center gap-2 text-xs text-zinc-500 mb-1">
+                                            <span className="font-medium">{enriched.reviews[0].author_name}</span>
+                                            <span>•</span>
+                                            <span className="flex items-center gap-0.5">
+                                              <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
+                                              {enriched.reviews[0].rating}
+                                            </span>
+                                            <span>•</span>
+                                            <span>{enriched.reviews[0].relative_time_description}</span>
+                                          </div>
+                                          <p className="text-sm text-zinc-700 line-clamp-2">
+                                            "{enriched.reviews[0].text}"
+                                          </p>
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              )
+                            })()}
 
                             {/* Call result - only after calls, pass booking handler for available items */}
                             {showCallStatus && item.result && !hideOutcome && (
