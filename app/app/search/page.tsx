@@ -95,6 +95,47 @@ export default function SearchPage() {
   const [loadingProfile, setLoadingProfile] = React.useState(true)
 
   const dateInputRef = React.useRef<HTMLInputElement>(null)
+  const [shouldAutoSubmit, setShouldAutoSubmit] = React.useState(false)
+  const formRef = React.useRef<HTMLFormElement>(null)
+
+  // Restore form state from URL params (after returning from signup)
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const craving = params.get('craving')
+    const loc = params.get('location')
+    const size = params.get('partySize')
+    const d = params.get('date')
+    const t = params.get('time')
+    const autoSubmit = params.get('autoSubmit')
+
+    if (craving) setCravingText(craving)
+    if (loc) setLocation(loc)
+    if (size) setPartySize(size)
+    if (d) setDate(d)
+    if (t) setTime(t)
+    
+    // If we have required fields and autoSubmit flag, trigger submit after user is loaded
+    if (autoSubmit === 'true' && craving && loc) {
+      setShouldAutoSubmit(true)
+    }
+
+    // Clean up URL params after restoring
+    if (craving || loc || size || d || t || autoSubmit) {
+      window.history.replaceState({}, '', '/app/search')
+    }
+  }, [])
+
+  // Auto-submit when user is authenticated and shouldAutoSubmit is true
+  React.useEffect(() => {
+    if (shouldAutoSubmit && user && cravingText && location && !loading) {
+      setShouldAutoSubmit(false)
+      // Small delay to ensure form is ready
+      setTimeout(() => {
+        formRef.current?.requestSubmit()
+      }, 100)
+    }
+  }, [shouldAutoSubmit, user, cravingText, location, loading])
 
   // Get available time options based on selected date
   const availableTimeOptions = React.useMemo(
@@ -222,8 +263,8 @@ export default function SearchPage() {
     // Require user to be logged in to search
     if (!user) {
       setLoading(false)
-      // Redirect to sign up with return URL
-      const returnUrl = `/app/search?craving=${encodeURIComponent(cravingText)}&location=${encodeURIComponent(location)}&partySize=${partySize}&date=${date}&time=${time}`
+      // Redirect to sign up with return URL that includes form state and autoSubmit flag
+      const returnUrl = `/app/search?craving=${encodeURIComponent(cravingText)}&location=${encodeURIComponent(location)}&partySize=${partySize}&date=${date}&time=${time}&autoSubmit=true`
       router.push(`/signup?returnUrl=${encodeURIComponent(returnUrl)}`)
       return
     }
@@ -346,7 +387,7 @@ export default function SearchPage() {
           {/* Main Form Card */}
           <Card className="border-0 shadow-xl bg-white/80 backdrop-blur dark:bg-zinc-900/80">
             <CardContent className="pt-8 pb-6">
-              <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
+              <form ref={formRef} className="flex flex-col gap-6" onSubmit={handleSubmit}>
                 {/* Craving */}
                 <div className="grid gap-2">
                   <label className="text-sm font-semibold text-red-600" htmlFor="cravingText">

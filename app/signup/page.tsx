@@ -23,12 +23,21 @@ export default function SignupPage() {
     const [error, setError] = React.useState<string | null>(null)
     const [isLoading, setIsLoading] = React.useState(false)
 
+    // Get returnUrl from query params
+    const [returnUrl, setReturnUrl] = React.useState<string | null>(null)
+    React.useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search)
+            setReturnUrl(params.get('returnUrl'))
+        }
+    }, [])
+
     // Redirect if already logged in
     React.useEffect(() => {
         if (user && !loading) {
-            router.push("/app/search")
+            router.push(returnUrl || "/app/search")
         }
-    }, [user, loading, router])
+    }, [user, loading, router, returnUrl])
 
     const handleEmailSignUp = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -59,7 +68,7 @@ export default function SignupPage() {
                 })
             }
 
-            router.push("/app/search")
+            router.push(returnUrl || "/app/search")
         } catch (err: any) {
             setError(err.message || "Failed to create account")
         } finally {
@@ -73,7 +82,7 @@ export default function SignupPage() {
 
         try {
             await signInWithGoogle()
-            router.push("/app/search")
+            router.push(returnUrl || "/app/search")
         } catch (err: any) {
             setError(err.message || "Failed to sign up with Google")
         } finally {
