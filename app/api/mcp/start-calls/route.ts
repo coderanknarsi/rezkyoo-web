@@ -6,21 +6,32 @@ export async function POST(req: Request) {
   try {
     await requireUser()
     const body = await req.json()
+    const { batchId, selected_place_ids } = body
     const callMode = process.env.REZKYOO_CALL_MODE ?? "live"
+    
     if (callMode === "simulate") {
-      const snapshot = await getBatchStatus({ batchId: body.batchId })
+      const snapshot = await getBatchStatus({ batchId })
       if (snapshot?.ok) {
-        seedSimBatch(body.batchId, snapshot.items ?? [])
+        // Filter items to only selected ones if selection provided
+        let itemsToCall = snapshot.items ?? []
+        if (selected_place_ids && Array.isArray(selected_place_ids) && selected_place_ids.length > 0) {
+          itemsToCall = itemsToCall.filter((item: any) => 
+            selected_place_ids.includes(item.place_id)
+          )
+        }
+        seedSimBatch(batchId, itemsToCall)
       }
       return Response.json({
         ok: true,
         message: "Simulated calls started.",
-        batchId: body.batchId,
+        batchId,
         simulated: true,
+        selected_count: selected_place_ids?.length,
       })
     }
 
-    const result = await startCalls(body)
+    // Pass selection to MCP server
+    const result = await startCalls({ batchId, selected_place_ids })
     return Response.json(result)
   } catch (error) {
     const message = error instanceof Error ? error.message : "Request failed"

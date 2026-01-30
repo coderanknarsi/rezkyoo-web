@@ -260,17 +260,10 @@ export default function SearchPage() {
     setError(null)
     setDebugResponse(null)
 
-    // Require user to be logged in to search
-    if (!user) {
-      setLoading(false)
-      // Redirect to sign up with return URL that includes form state and autoSubmit flag
-      const returnUrl = `/app/search?craving=${encodeURIComponent(cravingText)}&location=${encodeURIComponent(location)}&partySize=${partySize}&date=${date}&time=${time}&autoSubmit=true`
-      router.push(`/signup?returnUrl=${encodeURIComponent(returnUrl)}`)
-      return
-    }
+    // No longer require auth here - auth is required on results page when starting calls
 
-    // If phone was entered and not yet saved, save it to profile
-    if (phoneNumber && !hasPhoneSaved && isValidPhoneNumber(phoneNumber)) {
+    // If user is logged in and phone was entered, save it to profile
+    if (user && phoneNumber && !hasPhoneSaved && isValidPhoneNumber(phoneNumber)) {
       try {
         await saveUserProfile(user.uid, { phoneNumber })
         setHasPhoneSaved(true)
@@ -348,7 +341,8 @@ export default function SearchPage() {
           })
         }
 
-        router.push(`/app/batch/${data.batchId}`)
+        // Redirect to results page (not batch page)
+        router.push(`/app/results/${data.batchId}`)
         return
       }
 
