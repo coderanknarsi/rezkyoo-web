@@ -2,6 +2,8 @@ import type {
   FindRestaurantsInput,
   GetBatchStatusInput,
   StartCallsInput,
+  ConfirmBookingInput,
+  GetBookingStatusInput,
 } from "@/lib/mcp/types"
 
 let requestId = 0
@@ -111,6 +113,14 @@ export async function startCalls(args: StartCallsInput) {
 
 export async function getBatchStatus(args: GetBatchStatusInput) {
   return callTool("get_batch_status", args)
+}
+
+export async function confirmBooking(args: ConfirmBookingInput) {
+  return callTool("confirm_booking", args)
+}
+
+export async function getBookingStatus(args: GetBookingStatusInput) {
+  return callTool("get_booking_status", args)
 }
 
 export { callTool }

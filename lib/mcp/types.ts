@@ -21,6 +21,50 @@ export type GetBatchStatusInput = {
   paid_token?: string
 }
 
+export type ConfirmBookingInput = {
+  batchId: string
+  placeId: string
+  restaurantName: string
+  restaurantPhone: string
+  customerName: string
+  customerPhone: string
+  partySize: number
+  date: string
+  time: string
+  userId?: string
+}
+
+export type GetBookingStatusInput = {
+  bookingId: string
+}
+
+export type BookingStatus = "pending_confirmation" | "calling" | "confirmed" | "failed"
+
+export type BookingRecord = {
+  id: string
+  userId: string
+  batchId: string
+  placeId: string
+  restaurant: {
+    name: string
+    phone: string
+    place_id: string
+  }
+  customer: {
+    name: string
+    phone: string
+  }
+  reservation: {
+    party_size: number
+    date: string
+    time: string
+  }
+  status: BookingStatus
+  createdAt: string
+  confirmedAt?: string
+  failureReason?: string
+}
+
 export type McpOk<T> = { ok: true } & T
 
 export type McpErr = { ok: false; error: string }
@@ -44,3 +88,12 @@ export type GetBatchStatusResponse =
     error?: string
   }
   | McpErr
+
+export type ConfirmBookingResponse =
+  | { ok: true; bookingId: string; message?: string }
+  | McpErr
+
+export type GetBookingStatusResponse =
+  | { ok: true; status: BookingStatus; message?: string; booking?: BookingRecord }
+  | McpErr
+

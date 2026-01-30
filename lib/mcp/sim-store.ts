@@ -149,3 +149,59 @@ export function readSimBatch(batchId: string) {
     map_center: mapCenter,
   }
 }
+
+// ===============================
+// Booking Simulation
+// ===============================
+
+type SimulatedBooking = {
+  id: string
+  userId: string
+  batchId: string
+  placeId: string
+  restaurant: {
+    name: string
+    phone: string
+    place_id: string
+  }
+  customer: {
+    name: string
+    phone: string
+  }
+  reservation: {
+    party_size: number
+    date: string
+    time: string
+  }
+  status: "pending_confirmation" | "calling" | "confirmed" | "failed"
+  createdAt: string
+  confirmsAt?: number  // Epoch time when the simulated call "confirms"
+  confirmedAt?: string
+  failureReason?: string
+}
+
+const BOOKING_STORE_KEY = "__rezkyooBookingStore"
+
+function getBookingStore(): Map<string, SimulatedBooking> {
+  const g = globalThis as typeof globalThis & { [BOOKING_STORE_KEY]?: Map<string, SimulatedBooking> }
+  if (!g[BOOKING_STORE_KEY]) g[BOOKING_STORE_KEY] = new Map()
+  return g[BOOKING_STORE_KEY]!
+}
+
+export function setSimulatedBooking(bookingId: string, booking: SimulatedBooking) {
+  const store = getBookingStore()
+  store.set(bookingId, booking)
+}
+
+export function getSimulatedBooking(bookingId: string): SimulatedBooking | undefined {
+  const store = getBookingStore()
+  return store.get(bookingId)
+}
+
+export function updateSimulatedBooking(bookingId: string, updates: Partial<SimulatedBooking>) {
+  const store = getBookingStore()
+  const existing = store.get(bookingId)
+  if (existing) {
+    store.set(bookingId, { ...existing, ...updates })
+  }
+}

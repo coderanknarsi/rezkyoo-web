@@ -12,6 +12,8 @@ import { useAuth } from "@/lib/auth-context"
 import { CallMapVisualization } from "./components/CallMapVisualization"
 import { DynamicCallMap } from "./components/DynamicCallMap"
 import { PayPalPayment } from "@/components/PayPalPayment"
+import { BookingModal, BookingDetails, UserInfo } from "@/components/BookingModal"
+import { getUserProfile } from "@/lib/user-profile"
 
 const POLL_INTERVAL_MS = 5000 // 5 seconds during active calls
 
@@ -517,6 +519,26 @@ export default function BatchStatusPage() {
     time?: string
     craving?: { chips?: string[] }
   } | null>(null)
+
+  // Booking modal state
+  const [bookingModalOpen, setBookingModalOpen] = React.useState(false)
+  const [bookingDetails, setBookingDetails] = React.useState<BookingDetails | null>(null)
+  const [userInfo, setUserInfo] = React.useState<UserInfo>({})
+  const [confirmedBookingId, setConfirmedBookingId] = React.useState<string | null>(null)
+
+  // Fetch user profile for booking modal
+  React.useEffect(() => {
+    if (user?.uid) {
+      getUserProfile(user.uid).then((profile) => {
+        if (profile) {
+          setUserInfo({
+            name: profile.displayName || undefined,
+            phone: profile.phoneNumber || undefined,
+          })
+        }
+      })
+    }
+  }, [user?.uid])
 
   const fetchStatus = React.useCallback(async () => {
     if (!batchId) return
@@ -1344,9 +1366,27 @@ export default function BatchStatusPage() {
 
                   // Booking handler for this restaurant
                   const handleBook = () => {
-                    // TODO: Implement actual booking flow
-                    // For now, show alert with restaurant info
-                    alert(`Booking ${item.name}!\n\nThis would:\n1. Confirm your reservation\n2. Release holds at other restaurants\n3. Save your booking details`)
+                    // Check if already booked
+                    if (confirmedBookingId) {
+                      alert("You already have a confirmed booking from this search!")
+                      return
+                    }
+
+                    // Get the alternative time if this is an alternative booking
+                    const alternativeTime = item.result?.alternative_time || item.result?.alt_time
+
+                    // Open booking modal with restaurant details
+                    setBookingDetails({
+                      restaurantName: item.name || "Unknown Restaurant",
+                      restaurantPhone: item.phone || "",
+                      placeId: item.place_id || item.id || "",
+                      batchId: batchId || "",
+                      partySize: query?.party_size || 2,
+                      date: query?.date || new Date().toISOString().split('T')[0],
+                      time: query?.time || "19:00",
+                      alternativeTime: alternativeTime,
+                    })
+                    setBookingModalOpen(true)
                   }
 
                   return (
@@ -1515,6 +1555,23 @@ export default function BatchStatusPage() {
 
         </div>
       </div>
+
+      {/* Booking Modal */}
+      {bookingDetails && (
+        <BookingModal
+          open={bookingModalOpen}
+          onOpenChange={setBookingModalOpen}
+          booking={bookingDetails}
+          userInfo={userInfo}
+          onComplete={(success, bookingId) => {
+            if (success && bookingId) {
+              setConfirmedBookingId(bookingId)
+              // TODO: Could release holds at other restaurants here
+            }
+            setBookingModalOpen(false)
+          }}
+        />
+      )}
     </>
   )
 }
