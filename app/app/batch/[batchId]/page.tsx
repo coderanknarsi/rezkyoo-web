@@ -182,7 +182,7 @@ function RestaurantCard({ item, index, isActive }: {
   )
 }
 
-type CallStatus = "pending" | "calling" | "speaking" | "completed" | "failed" | "no_answer" | "skipped" | "error"
+type CallStatus = "pending" | "queued" | "calling" | "speaking" | "completed" | "failed" | "no_answer" | "skipped" | "error"
 
 type CallResult = {
   outcome?: "available" | "not_available" | "hold_confirmed" | "voicemail" | "no_answer" | "failed" | "alternative"
