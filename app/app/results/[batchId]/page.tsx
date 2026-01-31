@@ -102,9 +102,6 @@ function RestaurantSelectCard({
     .slice(0, 3)
     .map(t => t.replace(/_/g, " "))
 
-  // Determine if clicking should toggle or be blocked
-  const canToggle = isSelected || !isMaxSelected
-
   return (
     <Card 
       className={`border transition-all ${
@@ -114,7 +111,7 @@ function RestaurantSelectCard({
             ? "border-zinc-200 opacity-60 cursor-not-allowed"
             : "border-zinc-200 hover:border-zinc-300 hover:shadow-sm cursor-pointer"
       }`}
-      onClick={showCheckbox && canToggle ? onToggle : undefined}
+      onClick={showCheckbox ? onToggle : undefined}
     >
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
@@ -133,7 +130,10 @@ function RestaurantSelectCard({
                 <Checkbox
                   checked={isSelected}
                   disabled={!isSelected && isMaxSelected}
-                  onChange={() => canToggle && onToggle()}
+                  onChange={(e) => {
+                    e.stopPropagation()
+                    onToggle()
+                  }}
                   className={`shrink-0 mt-0.5 ${!isSelected && isMaxSelected ? 'opacity-40' : ''}`}
                   onClick={(e) => e.stopPropagation()}
                 />
@@ -311,21 +311,22 @@ export default function SearchResultsPage() {
   }, [userLocation, restaurantsForMap])
 
   // Toggle restaurant selection
-  const toggleSelection = (id: string) => {
+  const toggleSelection = React.useCallback((id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev)
       if (next.has(id)) {
+        // Always allow deselection
         next.delete(id)
       } else {
         // Don't add if already at max
-        if (next.size >= 5) {
-          return prev // No change
+        if (prev.size >= 5) {
+          return prev // No change - at max
         }
         next.add(id)
       }
       return next
     })
-  }
+  }, [])
 
   // Check if max selections reached
   const isMaxSelected = selectedIds.size >= 5

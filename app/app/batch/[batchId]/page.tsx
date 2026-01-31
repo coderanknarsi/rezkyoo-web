@@ -394,6 +394,7 @@ type ReservationDetails = {
   date?: string
   time?: string
   party_size?: number
+  special_requests?: string
 }
 
 function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation?: ReservationDetails, isBooked?: boolean) {
@@ -411,7 +412,7 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
     </div>
   ) : null
 
-  // Format special request status
+  // Format special request status (from restaurant response OR show user's request text)
   const specialRequestInfo = result.special_request_status ? (
     <div className={`mt-2 p-2 rounded text-xs flex items-start gap-2 ${
       result.special_request_status.honored 
@@ -426,6 +427,15 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
         {result.special_request_status.note && (
           <div className="mt-0.5 opacity-80">{result.special_request_status.note}</div>
         )}
+      </div>
+    </div>
+  ) : reservation?.special_requests ? (
+    // Show user's original request if no restaurant response yet
+    <div className="mt-2 p-2 rounded text-xs bg-blue-50 border border-blue-200 text-blue-700 flex items-start gap-2">
+      <span className="text-base">📝</span>
+      <div>
+        <div className="font-medium">Your special request</div>
+        <div className="mt-0.5 opacity-80">{reservation.special_requests}</div>
       </div>
     </div>
   ) : null
@@ -1680,7 +1690,12 @@ export default function BatchStatusPage() {
                                 {getOutcomeMessage(
                                   item.result, 
                                   (hasAvailability || hasAlternative) ? handleBook : undefined,
-                                  query ? { date: query.date, time: query.time, party_size: query.party_size } : undefined,
+                                  query ? { 
+                                    date: query.date, 
+                                    time: query.time, 
+                                    party_size: query.party_size,
+                                    special_requests: query.special_requests 
+                                  } : undefined,
                                   confirmedBookingDetails?.placeId === (item.place_id || item.id)
                                 )}
                               </div>

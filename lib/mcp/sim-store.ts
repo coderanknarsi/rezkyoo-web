@@ -142,9 +142,20 @@ export function readSimBatch(batchId: string) {
       status !== "completed"
         ? undefined
         : item.outcome === "available"
-          ? { outcome: "available", ai_summary: "We can accommodate the requested time." }
+          ? { 
+              outcome: "available", 
+              ai_summary: "We can accommodate the requested time.",
+              // Simulate special request being honored for available outcomes
+              special_request_status: { honored: true, note: "We'll have everything ready for you!" }
+            }
           : item.outcome === "alternative"
-            ? { outcome: "not_available", alternative_time: "6:30 PM", ai_summary: "Only earlier seating available." }
+            ? { 
+                outcome: "not_available", 
+                alternative_time: "6:30 PM", 
+                ai_summary: "Only earlier seating available.",
+                // Simulate partial special request handling
+                special_request_status: { honored: false, note: "We can try to accommodate at the alternative time." }
+              }
             : { outcome: "not_available", ai_summary: "No availability at requested time." }
 
     return {
