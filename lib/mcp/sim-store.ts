@@ -92,6 +92,17 @@ export function seedSimBatch(batchId: string, items: BackendItem[]) {
   return batch
 }
 
+// Force reseed - used when starting calls to reset timers
+// This ensures calls don't appear "already complete" if user took time to login
+export function reseedSimBatch(batchId: string, items: BackendItem[]) {
+  const store = getStore()
+  const now = Date.now()
+  const plans = items.map((i) => buildPlan(i, now))
+  const batch: SimBatch = { batchId, createdAt: now, items: plans }
+  store.set(batchId, batch)
+  return batch
+}
+
 export function readSimBatch(batchId: string) {
   const store = getStore()
   const batch = store.get(batchId)

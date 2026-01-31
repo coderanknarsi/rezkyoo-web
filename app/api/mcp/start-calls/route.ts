@@ -1,6 +1,6 @@
 import { requireUser } from "@/lib/auth"
 import { getBatchStatus, startCalls } from "@/lib/mcp/client"
-import { seedSimBatch } from "@/lib/mcp/sim-store"
+import { reseedSimBatch } from "@/lib/mcp/sim-store"
 
 export async function POST(req: Request) {
   try {
@@ -19,7 +19,8 @@ export async function POST(req: Request) {
             selected_place_ids.includes(item.place_id)
           )
         }
-        seedSimBatch(batchId, itemsToCall)
+        // Use reseedSimBatch to reset timers (in case user took time to login)
+        reseedSimBatch(batchId, itemsToCall)
       }
       return Response.json({
         ok: true,
