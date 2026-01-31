@@ -87,12 +87,14 @@ function RestaurantSelectCard({
   isSelected,
   onToggle,
   showCheckbox,
+  isMaxSelected,
 }: {
   item: BatchItem
   index: number
   isSelected: boolean
   onToggle: () => void
   showCheckbox: boolean
+  isMaxSelected: boolean
 }) {
   // Format restaurant types for display
   const displayTypes = item.types
@@ -100,14 +102,19 @@ function RestaurantSelectCard({
     .slice(0, 3)
     .map(t => t.replace(/_/g, " "))
 
+  // Determine if clicking should toggle or be blocked
+  const canToggle = isSelected || !isMaxSelected
+
   return (
     <Card 
-      className={`border transition-all cursor-pointer ${
+      className={`border transition-all ${
         isSelected 
-          ? "border-red-300 bg-red-50/50 shadow-md" 
-          : "border-zinc-200 hover:border-zinc-300 hover:shadow-sm"
+          ? "border-red-300 bg-red-50/50 shadow-md cursor-pointer" 
+          : isMaxSelected && showCheckbox
+            ? "border-zinc-200 opacity-60 cursor-not-allowed"
+            : "border-zinc-200 hover:border-zinc-300 hover:shadow-sm cursor-pointer"
       }`}
-      onClick={showCheckbox ? onToggle : undefined}
+      onClick={showCheckbox && canToggle ? onToggle : undefined}
     >
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
@@ -125,8 +132,9 @@ function RestaurantSelectCard({
               {showCheckbox && (
                 <Checkbox
                   checked={isSelected}
-                  onChange={onToggle}
-                  className="shrink-0 mt-0.5"
+                  disabled={!isSelected && isMaxSelected}
+                  onChange={() => canToggle && onToggle()}
+                  className={`shrink-0 mt-0.5 ${!isSelected && isMaxSelected ? 'opacity-40' : ''}`}
                   onClick={(e) => e.stopPropagation()}
                 />
               )}
@@ -309,17 +317,18 @@ export default function SearchResultsPage() {
       if (next.has(id)) {
         next.delete(id)
       } else {
-        // Limit to 5 selections
+        // Don't add if already at max
         if (next.size >= 5) {
-          // Remove oldest and add new
-          const firstId = next.values().next().value
-          if (firstId) next.delete(firstId)
+          return prev // No change
         }
         next.add(id)
       }
       return next
     })
   }
+
+  // Check if max selections reached
+  const isMaxSelected = selectedIds.size >= 5
 
   // Handle mode change - auto-select when switching to auto mode
   const handleModeChange = (mode: "auto" | "manual") => {
@@ -512,8 +521,11 @@ export default function SearchResultsPage() {
             <div>
               {/* Controls row - Selection mode and Sort */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
-                <p className="text-sm text-zinc-600">
-                  Select up to 5 restaurants to call
+                <p className={`text-sm ${isMaxSelected && selectionMode === 'manual' ? 'text-amber-600 font-medium' : 'text-zinc-600'}`}>
+                  {isMaxSelected && selectionMode === 'manual' 
+                    ? '✓ 5 restaurants selected (max)'
+                    : 'Select up to 5 restaurants to call'
+                  }
                 </p>
                 <div className="flex items-center gap-3">
                   {/* Sort dropdown */}
@@ -557,6 +569,7 @@ export default function SearchResultsPage() {
                       isSelected={selectedIds.has(itemId)}
                       onToggle={() => toggleSelection(itemId)}
                       showCheckbox={selectionMode === "manual"}
+                      isMaxSelected={isMaxSelected}
                     />
                   )
                 })}

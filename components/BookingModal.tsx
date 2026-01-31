@@ -16,6 +16,11 @@ export interface BookingDetails {
   date: string
   time: string
   alternativeTime?: string  // If booking for an alternative time
+  specialRequests?: string  // User's special requests text
+  specialRequestStatus?: {  // Whether restaurant can accommodate
+    honored: boolean
+    note?: string
+  }
 }
 
 export interface UserInfo {
@@ -237,6 +242,30 @@ export function BookingModal({
             {booking.alternativeTime && (
               <div className="text-xs text-amber-600 mt-1">
                 ⏰ Booking for alternative time offered by restaurant
+              </div>
+            )}
+            {/* Special Request Status */}
+            {booking.specialRequestStatus && (
+              <div className={`mt-2 p-2 rounded text-xs flex items-start gap-2 ${
+                booking.specialRequestStatus.honored 
+                  ? "bg-emerald-50 text-emerald-700" 
+                  : "bg-amber-50 text-amber-700"
+              }`}>
+                <span className="text-base">{booking.specialRequestStatus.honored ? "✓" : "⚠"}</span>
+                <div>
+                  <div className="font-medium">
+                    {booking.specialRequestStatus.honored ? "Special request confirmed!" : "Special request note"}
+                  </div>
+                  {booking.specialRequestStatus.note && (
+                    <div className="mt-0.5 opacity-80">{booking.specialRequestStatus.note}</div>
+                  )}
+                </div>
+              </div>
+            )}
+            {/* Show special requests text if present but no status yet */}
+            {booking.specialRequests && !booking.specialRequestStatus && (
+              <div className="mt-2 p-2 rounded text-xs bg-zinc-100 text-zinc-600">
+                <span className="font-medium">Special request:</span> {booking.specialRequests}
               </div>
             )}
           </div>

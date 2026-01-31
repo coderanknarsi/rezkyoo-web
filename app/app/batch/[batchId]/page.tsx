@@ -411,12 +411,32 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
     </div>
   ) : null
 
+  // Format special request status
+  const specialRequestInfo = result.special_request_status ? (
+    <div className={`mt-2 p-2 rounded text-xs flex items-start gap-2 ${
+      result.special_request_status.honored 
+        ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
+        : "bg-amber-50 border border-amber-200 text-amber-700"
+    }`}>
+      <span className="text-base">{result.special_request_status.honored ? "✓" : "⚠"}</span>
+      <div>
+        <div className="font-medium">
+          {result.special_request_status.honored ? "Special request confirmed!" : "Special request note"}
+        </div>
+        {result.special_request_status.note && (
+          <div className="mt-0.5 opacity-80">{result.special_request_status.note}</div>
+        )}
+      </div>
+    </div>
+  ) : null
+
   if (result.outcome === "hold_confirmed") {
     return (
       <div className="rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 p-4 text-sm">
         <div className="font-semibold text-emerald-700">🎉 Table on hold!</div>
         {result.time_held && <div className="text-emerald-600">Held until: {result.time_held}</div>}
         {result.perks && <div className="mt-1 text-emerald-600">Perks: {result.perks}</div>}
+        {specialRequestInfo}
         {result.ai_summary && <div className="mt-2 text-emerald-600/80">{result.ai_summary}</div>}
         {reservationInfo}
         {onBook && (
@@ -435,6 +455,7 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
     return (
       <div className="rounded-lg bg-gradient-to-r from-rose-50 to-orange-50 border border-orange-200 p-4 text-sm">
         <div className="font-semibold text-orange-700">✨ Table available!</div>
+        {specialRequestInfo}
         {result.ai_summary && <div className="mt-1 text-orange-600">{result.ai_summary}</div>}
         {reservationInfo}
         {onBook && (
@@ -455,6 +476,7 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
       <div className="rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 p-4 text-sm">
         <div className="font-semibold text-amber-700">⏰ Alternative time available</div>
         <div className="text-amber-800 font-medium text-base mt-1">Available at: {altTime}</div>
+        {specialRequestInfo}
         {result.ai_summary && <div className="mt-1 text-amber-600/80">{result.ai_summary}</div>}
         {reservation && (reservation.date || reservation.party_size) && (
           <div className="mt-2 p-2 rounded bg-white/50 border border-amber-200/50 text-xs text-amber-700">
@@ -522,6 +544,7 @@ export default function BatchStatusPage() {
     date?: string
     time?: string
     craving?: { chips?: string[] }
+    special_requests?: string
   } | null>(null)
 
   // Booking modal state
@@ -1389,6 +1412,8 @@ export default function BatchStatusPage() {
                       date: query?.date || new Date().toISOString().split('T')[0],
                       time: query?.time || "19:00",
                       alternativeTime: alternativeTime,
+                      specialRequests: query?.special_requests,
+                      specialRequestStatus: item.result?.special_request_status,
                     })
                     setBookingModalOpen(true)
                   }
