@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Phone, Star, MapPin, Check, Loader2, Sparkles, Hand } from "lucide-react"
+import { Phone, Star, MapPin, Check, Loader2, Sparkles, Hand, ArrowUpDown } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -169,14 +169,6 @@ function RestaurantSelectCard({
                 ))}
               </div>
             )}
-
-            {/* Phone indicator */}
-            {item.phone && (
-              <div className="flex items-center gap-1 mt-2 text-xs text-emerald-600">
-                <Phone className="h-3 w-3" />
-                <span>Phone available</span>
-              </div>
-            )}
           </div>
         </div>
       </CardContent>
@@ -200,6 +192,10 @@ export default function SearchResultsPage() {
   const [selectionMode, setSelectionMode] = React.useState<"auto" | "manual">("auto")
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set())
   const [isStartingCalls, setIsStartingCalls] = React.useState(false)
+  
+  // Sort state
+  type SortOption = "distance" | "rating" | "reviews" | "price_low" | "price_high"
+  const [sortBy, setSortBy] = React.useState<SortOption>("distance")
 
   // Fetch batch data
   React.useEffect(() => {
@@ -259,9 +255,28 @@ export default function SearchResultsPage() {
     fetchBatch()
   }, [batchId])
 
+  // Sort items based on selected sort option
+  const sortedItems = React.useMemo(() => {
+    const sorted = [...items]
+    switch (sortBy) {
+      case "distance":
+        return sorted.sort((a, b) => (a.distance_miles || 999) - (b.distance_miles || 999))
+      case "rating":
+        return sorted.sort((a, b) => (b.rating || 0) - (a.rating || 0))
+      case "reviews":
+        return sorted.sort((a, b) => (b.user_ratings_total || 0) - (a.user_ratings_total || 0))
+      case "price_low":
+        return sorted.sort((a, b) => (a.price_level || 5) - (b.price_level || 5))
+      case "price_high":
+        return sorted.sort((a, b) => (b.price_level || 0) - (a.price_level || 0))
+      default:
+        return sorted
+    }
+  }, [items, sortBy])
+
   // Get restaurants with valid coordinates for map
   const restaurantsForMap = React.useMemo(() => {
-    return items
+    return sortedItems
       .filter(i => i.lat && i.lng)
       .map((item, idx) => ({
         id: item.id || item.place_id || `item-${idx}`,
@@ -271,7 +286,7 @@ export default function SearchResultsPage() {
         index: idx + 1,
         isSelected: selectedIds.has(item.id || item.place_id || ""),
       }))
-  }, [items, selectedIds])
+  }, [sortedItems, selectedIds])
 
   // Map center
   const mapCenter = React.useMemo(() => {
@@ -310,13 +325,21 @@ export default function SearchResultsPage() {
   const handleModeChange = (mode: "auto" | "manual") => {
     setSelectionMode(mode)
     if (mode === "auto") {
-      // Re-select top 5 by rating
-      const withPhones = items.filter(i => i.phone)
-      const sorted = [...withPhones].sort((a, b) => (b.rating || 0) - (a.rating || 0))
-      const autoSelected = new Set(sorted.slice(0, 5).map(i => i.id || i.place_id || ""))
+      // Re-select top 5 based on current sort (use sortedItems)
+      const withPhones = sortedItems.filter(i => i.phone)
+      const autoSelected = new Set(withPhones.slice(0, 5).map(i => i.id || i.place_id || ""))
       setSelectedIds(autoSelected)
     }
   }
+  
+  // Update auto-selection when sort changes (only in auto mode)
+  React.useEffect(() => {
+    if (selectionMode === "auto" && sortedItems.length > 0) {
+      const withPhones = sortedItems.filter(i => i.phone)
+      const autoSelected = new Set(withPhones.slice(0, 5).map(i => i.id || i.place_id || ""))
+      setSelectedIds(autoSelected)
+    }
+  }, [sortBy, sortedItems, selectionMode])
 
   // Start calls
   const handleStartCalls = async () => {
@@ -451,9 +474,6 @@ export default function SearchResultsPage() {
                       <p className="font-semibold text-lg">
                         {selectedIds.size} restaurant{selectedIds.size !== 1 ? "s" : ""} selected
                       </p>
-                      <p className="text-sm text-zinc-600">
-                        {callableCount} have phone numbers we can call
-                      </p>
                     </div>
                     <div className="text-right">
                       <p className="text-2xl font-bold text-red-600">FREE</p>
@@ -490,15 +510,32 @@ export default function SearchResultsPage() {
 
             {/* Restaurant list section */}
             <div>
-              {/* Selection mode toggle */}
-              <div className="flex items-center justify-between mb-4">
+              {/* Controls row - Selection mode and Sort */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
                 <p className="text-sm text-zinc-600">
                   Select up to 5 restaurants to call
                 </p>
-                <SelectionModeToggle 
-                  mode={selectionMode} 
-                  onModeChange={handleModeChange} 
-                />
+                <div className="flex items-center gap-3">
+                  {/* Sort dropdown */}
+                  <div className="flex items-center gap-2">
+                    <ArrowUpDown className="h-4 w-4 text-zinc-400" />
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as SortOption)}
+                      className="text-sm border border-zinc-200 rounded-md px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    >
+                      <option value="distance">Closest</option>
+                      <option value="rating">Highest Rated</option>
+                      <option value="reviews">Most Reviews</option>
+                      <option value="price_low">$ → $$$$</option>
+                      <option value="price_high">$$$$ → $</option>
+                    </select>
+                  </div>
+                  <SelectionModeToggle 
+                    mode={selectionMode} 
+                    onModeChange={handleModeChange} 
+                  />
+                </div>
               </div>
 
               {/* Error message */}
@@ -510,7 +547,7 @@ export default function SearchResultsPage() {
 
               {/* Restaurant list */}
               <div className="space-y-3">
-                {items.map((item, index) => {
+                {sortedItems.map((item, index) => {
                   const itemId = item.id || item.place_id || `item-${index}`
                   return (
                     <RestaurantSelectCard
@@ -525,7 +562,7 @@ export default function SearchResultsPage() {
                 })}
               </div>
 
-              {items.length === 0 && (
+              {sortedItems.length === 0 && (
                 <Card>
                   <CardContent className="py-12 text-center">
                     <p className="text-zinc-500">No restaurants found. Try a different search.</p>

@@ -10,6 +10,11 @@ type BackendItem = {
   lng?: number
   address?: string
   types?: string[]
+  // Rating and review info (from Places API)
+  rating?: number
+  user_ratings_total?: number
+  distance_miles?: number
+  price_level?: number
 }
 
 type SimItemPlan = {
@@ -24,6 +29,11 @@ type SimItemPlan = {
   lng?: number
   address?: string
   types?: string[]
+  // Rating and review info
+  rating?: number
+  user_ratings_total?: number
+  distance_miles?: number
+  price_level?: number
 }
 
 type SimBatch = {
@@ -64,6 +74,11 @@ function buildPlan(item: BackendItem, now: number): SimItemPlan {
     lng: item.lng,
     address: item.address,
     types: item.types,
+    // Preserve rating info
+    rating: item.rating,
+    user_ratings_total: item.user_ratings_total,
+    distance_miles: item.distance_miles,
+    price_level: item.price_level,
   }
 }
 
@@ -98,6 +113,11 @@ export function readSimBatch(batchId: string) {
         lng: item.lng,
         address: item.address,
         types: item.types,
+        // Preserve rating info
+        rating: item.rating,
+        user_ratings_total: item.user_ratings_total,
+        distance_miles: item.distance_miles,
+        price_level: item.price_level,
       }
     }
 
@@ -128,6 +148,11 @@ export function readSimBatch(batchId: string) {
       lng: item.lng,
       address: item.address,
       types: item.types,
+      // Preserve rating info
+      rating: item.rating,
+      user_ratings_total: item.user_ratings_total,
+      distance_miles: item.distance_miles,
+      price_level: item.price_level,
     }
   })
 
