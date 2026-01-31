@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { Phone, Search, Clock, CheckCircle, Users, Sparkles, Star, Shield, Quote } from "lucide-react"
+import { Phone, Search, Clock, CheckCircle, Users, Sparkles, Star, Shield, Quote, Zap, HeartHandshake, PhoneCall, UsersRound, Timer, PhoneOff } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 
@@ -191,6 +191,144 @@ export default function Home() {
               <p className="mt-2 text-zinc-600 dark:text-zinc-400">
                 Review the results, pick your favorite, and we'll lock in your reservation.
               </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* What Makes Us Different */}
+      <section className="px-6 py-24">
+        <div className="mx-auto max-w-6xl">
+          <div className="text-center">
+            <h2 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-4xl">
+              What Makes Us Different
+            </h2>
+            <p className="mt-4 text-lg text-zinc-600 dark:text-zinc-400">
+              Not another booking app — we actually pick up the phone
+            </p>
+          </div>
+
+          {/* Differentiator Cards */}
+          <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Real Human Calls */}
+            <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-white to-red-50 p-6 shadow-sm transition-all hover:shadow-lg dark:from-zinc-900 dark:to-red-950/20">
+              <div className="absolute top-0 right-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-red-100 dark:bg-red-900/20" />
+              <div className="relative">
+                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-red-600 text-white shadow-lg shadow-red-500/25">
+                  <PhoneCall className="h-7 w-7" />
+                </div>
+                <h3 className="mt-5 text-lg font-bold text-zinc-900 dark:text-white">Real Conversations</h3>
+                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                  We call restaurants and speak with staff directly. No automated systems, no impersonal forms — just a real voice getting you a real table.
+                </p>
+              </div>
+            </div>
+
+            {/* Restaurant Friendly */}
+            <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-white to-emerald-50 p-6 shadow-sm transition-all hover:shadow-lg dark:from-zinc-900 dark:to-emerald-950/20">
+              <div className="absolute top-0 right-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-emerald-100 dark:bg-emerald-900/20" />
+              <div className="relative">
+                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25">
+                  <HeartHandshake className="h-7 w-7" />
+                </div>
+                <h3 className="mt-5 text-lg font-bold text-zinc-900 dark:text-white">Restaurant-Friendly</h3>
+                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                  Unlike OpenTable, Resy, or Yelp, we don't charge restaurants huge per-cover fees. They appreciate us, which means better service for you.
+                </p>
+              </div>
+            </div>
+
+            {/* Simultaneous Calls */}
+            <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-white to-amber-50 p-6 shadow-sm transition-all hover:shadow-lg dark:from-zinc-900 dark:to-amber-950/20">
+              <div className="absolute top-0 right-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-amber-100 dark:bg-amber-900/20" />
+              <div className="relative">
+                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/25">
+                  <Zap className="h-7 w-7" />
+                </div>
+                <h3 className="mt-5 text-lg font-bold text-zinc-900 dark:text-white">Simultaneously Fast</h3>
+                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                  We call all restaurants at the same time — not one by one. What would take you an hour takes us under a minute.
+                </p>
+              </div>
+            </div>
+
+            {/* Group Booking Experts */}
+            <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-white to-violet-50 p-6 shadow-sm transition-all hover:shadow-lg dark:from-zinc-900 dark:to-violet-950/20">
+              <div className="absolute top-0 right-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-violet-100 dark:bg-violet-900/20" />
+              <div className="relative">
+                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 text-white shadow-lg shadow-violet-500/25">
+                  <UsersRound className="h-7 w-7" />
+                </div>
+                <h3 className="mt-5 text-lg font-bold text-zinc-900 dark:text-white">Group Booking Experts</h3>
+                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                  Large parties, private rooms, prix-fixe menus — we handle the awkward negotiations so you can focus on celebrating.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Time Comparison Visual */}
+          <div className="mt-16 rounded-2xl border bg-gradient-to-r from-zinc-50 to-zinc-100 p-8 dark:from-zinc-900 dark:to-zinc-800">
+            <div className="text-center mb-8">
+              <h3 className="text-xl font-bold text-zinc-900 dark:text-white">Time Saved</h3>
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">Calling 10 restaurants yourself vs. using RezKyoo</p>
+            </div>
+            <div className="grid gap-6 sm:grid-cols-2">
+              {/* Calling Yourself */}
+              <div className="rounded-xl bg-white p-6 shadow-sm border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-700">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-200 text-zinc-500 dark:bg-zinc-800">
+                    <PhoneOff className="h-5 w-5" />
+                  </div>
+                  <span className="font-semibold text-zinc-700 dark:text-zinc-300">Calling Yourself</span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-4xl font-bold text-zinc-400">45+ min</span>
+                  <span className="text-sm text-zinc-500">average</span>
+                </div>
+                <ul className="mt-4 space-y-2 text-sm text-zinc-500">
+                  <li className="flex items-center gap-2">
+                    <Timer className="h-4 w-4" />
+                    5 min on hold per restaurant
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <PhoneOff className="h-4 w-4" />
+                    Repeat when line is busy
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Call back tomorrow if closed
+                  </li>
+                </ul>
+              </div>
+
+              {/* Using RezKyoo */}
+              <div className="rounded-xl bg-gradient-to-br from-red-50 to-orange-50 p-6 shadow-sm border-2 border-red-200 dark:from-red-950/30 dark:to-orange-950/30 dark:border-red-800">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500 text-white">
+                    <Zap className="h-5 w-5" />
+                  </div>
+                  <span className="font-semibold text-red-700 dark:text-red-400">Using RezKyoo</span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-4xl font-bold text-red-500">&lt;1 min</span>
+                  <span className="text-sm text-red-600 dark:text-red-400">to start</span>
+                </div>
+                <ul className="mt-4 space-y-2 text-sm text-red-700 dark:text-red-400">
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4" />
+                    All calls happen simultaneously
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4" />
+                    Results in ~2 minutes
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4" />
+                    We handle busy signals & retries
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>

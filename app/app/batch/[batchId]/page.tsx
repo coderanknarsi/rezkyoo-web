@@ -191,6 +191,10 @@ type CallResult = {
   ai_summary?: string
   time_held?: string
   perks?: string
+  special_request_status?: {
+    honored: boolean
+    note?: string
+  }
 }
 
 type EnrichedPlaceData = {

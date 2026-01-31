@@ -83,6 +83,7 @@ export default function SearchPage() {
   const [partySize, setPartySize] = React.useState("")
   const [date, setDate] = React.useState(getTodayDate()) // Default to today
   const [time, setTime] = React.useState("")
+  const [specialRequests, setSpecialRequests] = React.useState("")
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [debugResponse, setDebugResponse] = React.useState<any>(null)
@@ -307,6 +308,10 @@ export default function SearchPage() {
       payload.intent = "specific_time" // User picked a specific time
     } else {
       payload.intent = "next_available" // Flexible on time
+    }
+
+    if (specialRequests.trim()) {
+      payload.special_requests = specialRequests.trim()
     }
 
     try {
@@ -556,6 +561,47 @@ export default function SearchPage() {
                       Only showing times at least 30 min from now
                     </p>
                   )}
+                </div>
+
+                {/* Special Requests - optional */}
+                <div className="grid gap-2">
+                  <details className="group">
+                    <summary className="text-sm font-semibold text-red-600 cursor-pointer hover:text-red-700 transition-colors flex items-center gap-2">
+                      <span>Special requests</span>
+                      <span className="text-zinc-400 font-normal text-xs">(optional)</span>
+                      <span className="group-open:hidden text-zinc-400">▸</span>
+                      <span className="hidden group-open:inline text-zinc-400">▾</span>
+                    </summary>
+                    <div className="mt-3 space-y-3">
+                      <textarea
+                        id="specialRequests"
+                        value={specialRequests}
+                        onChange={(e) => setSpecialRequests(e.target.value)}
+                        placeholder="e.g., Patio seating, birthday celebration, nut allergy, bar table, away from bathrooms..."
+                        rows={2}
+                        className="flex w-full rounded-md border border-zinc-200 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                      />
+                      <div className="flex flex-wrap gap-2">
+                        {["Patio seating", "Birthday celebration", "Anniversary", "Quiet table", "Bar seating", "High chair needed"].map((suggestion) => (
+                          <button
+                            key={suggestion}
+                            type="button"
+                            onClick={() => {
+                              const current = specialRequests.trim();
+                              if (current.toLowerCase().includes(suggestion.toLowerCase())) return;
+                              setSpecialRequests(current ? `${current}, ${suggestion}` : suggestion);
+                            }}
+                            className="px-2 py-1 text-xs rounded-full bg-zinc-100 text-zinc-600 hover:bg-red-100 hover:text-red-700 transition-colors"
+                          >
+                            + {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-xs text-zinc-500">
+                        Our AI will mention these requests when speaking with the restaurant
+                      </p>
+                    </div>
+                  </details>
                 </div>
 
                 {/* Phone Number - shown for logged-in users without saved phone */}
