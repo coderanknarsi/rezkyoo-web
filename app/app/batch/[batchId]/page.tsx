@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Phone, PhoneCall, Check, Star, AlertCircle, RefreshCw, MapPin, Lock, MessageSquare, XCircle } from "lucide-react"
+import { Phone, PhoneCall, Check, Star, AlertCircle, RefreshCw, MapPin, Lock, MessageSquare, XCircle, Calendar, Clock, Users } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -396,7 +396,7 @@ type ReservationDetails = {
   party_size?: number
 }
 
-function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation?: ReservationDetails) {
+function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation?: ReservationDetails, isBooked?: boolean) {
   if (!result) return null
 
   // Format reservation details for display
@@ -439,7 +439,11 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
         {specialRequestInfo}
         {result.ai_summary && <div className="mt-2 text-emerald-600/80">{result.ai_summary}</div>}
         {reservationInfo}
-        {onBook && (
+        {isBooked ? (
+          <div className="mt-3 w-full py-2 px-4 bg-emerald-100 text-emerald-700 font-semibold rounded-lg text-center border-2 border-emerald-300">
+            ✓ Booked!
+          </div>
+        ) : onBook && (
           <button
             onClick={onBook}
             className="mt-3 w-full py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition-colors"
@@ -458,7 +462,11 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
         {specialRequestInfo}
         {result.ai_summary && <div className="mt-1 text-orange-600">{result.ai_summary}</div>}
         {reservationInfo}
-        {onBook && (
+        {isBooked ? (
+          <div className="mt-3 w-full py-2 px-4 bg-emerald-100 text-emerald-700 font-semibold rounded-lg text-center border-2 border-emerald-300">
+            ✓ Booked!
+          </div>
+        ) : onBook && (
           <button
             onClick={onBook}
             className="mt-3 w-full py-2 px-4 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors"
@@ -488,7 +496,11 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
             </div>
           </div>
         )}
-        {onBook && (
+        {isBooked ? (
+          <div className="mt-3 w-full py-2 px-4 bg-emerald-100 text-emerald-700 font-semibold rounded-lg text-center border-2 border-emerald-300">
+            ✓ Booked!
+          </div>
+        ) : onBook && (
           <button
             onClick={onBook}
             className="mt-3 w-full py-2 px-4 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg transition-colors"
@@ -552,6 +564,63 @@ export default function BatchStatusPage() {
   const [bookingDetails, setBookingDetails] = React.useState<BookingDetails | null>(null)
   const [userInfo, setUserInfo] = React.useState<UserInfo>({})
   const [confirmedBookingId, setConfirmedBookingId] = React.useState<string | null>(null)
+  const [confirmedBookingDetails, setConfirmedBookingDetails] = React.useState<BookingDetails | null>(null)
+
+  // Count other available restaurants (for "try another" option in BookingModal)
+  const otherAvailableCount = React.useMemo(() => {
+    if (!bookingDetails) return 0
+    return items.filter(item => {
+      const itemId = item.id || item.place_id || ""
+      const isCurrentBooking = itemId === bookingDetails.placeId
+      const isAvailable = item.result?.outcome === "available" || 
+                          item.result?.outcome === "hold_confirmed" ||
+                          item.result?.alternative_time || 
+                          item.result?.alt_time
+      return !isCurrentBooking && isAvailable
+    }).length
+  }, [items, bookingDetails])
+
+  // Release holds at other restaurants after a successful booking
+  const releaseOtherHolds = React.useCallback(async (bookedPlaceId: string) => {
+    if (!batchId) return
+    
+    // Find all restaurants with holds that are NOT the booked one
+    const holdsToRelease = items.filter(item => {
+      const itemId = item.id || item.place_id || ""
+      const isBookedRestaurant = itemId === bookedPlaceId
+      const hasHold = item.result?.outcome === "hold_confirmed"
+      return !isBookedRestaurant && hasHold
+    })
+
+    if (holdsToRelease.length === 0) {
+      console.log("No holds to release")
+      return
+    }
+
+    console.log(`Releasing holds at ${holdsToRelease.length} restaurant(s)...`)
+
+    // Release holds in parallel (fire and forget - don't block the UI)
+    const releasePromises = holdsToRelease.map(async (item) => {
+      try {
+        await fetch("/api/mcp/release-hold", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            batchId,
+            placeId: item.place_id || item.id,
+            restaurantName: item.name,
+            restaurantPhone: item.phone,
+          }),
+        })
+        console.log(`Released hold at ${item.name}`)
+      } catch (err) {
+        console.error(`Failed to release hold at ${item.name}:`, err)
+      }
+    })
+
+    // Don't await - let these run in the background
+    Promise.all(releasePromises).catch(console.error)
+  }, [batchId, items])
 
   // Fetch user profile for booking modal
   React.useEffect(() => {
@@ -912,6 +981,49 @@ export default function BatchStatusPage() {
                       {query.location.length > 30 ? query.location.substring(0, 30) + "..." : query.location}
                     </span>
                   )}
+                </div>
+              )}
+
+              {/* Confirmed Booking Banner */}
+              {confirmedBookingId && confirmedBookingDetails && (
+                <div className="mt-4 p-4 rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-300">
+                  <div className="flex items-start gap-3">
+                    <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                      <Check className="h-6 w-6 text-emerald-600" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-emerald-800 text-lg">Booking Confirmed!</div>
+                      <div className="text-emerald-700 font-medium">{confirmedBookingDetails.restaurantName}</div>
+                      <div className="flex flex-wrap gap-3 mt-2 text-sm text-emerald-600">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3.5 w-3.5" />
+                          {confirmedBookingDetails.date}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5" />
+                          {formatTime12Hour(confirmedBookingDetails.alternativeTime || confirmedBookingDetails.time)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Users className="h-3.5 w-3.5" />
+                          {confirmedBookingDetails.partySize} guests
+                        </span>
+                      </div>
+                      {confirmedBookingDetails.specialRequestStatus && (
+                        <div className={`mt-2 text-sm flex items-center gap-1 ${
+                          confirmedBookingDetails.specialRequestStatus.honored ? "text-emerald-600" : "text-amber-600"
+                        }`}>
+                          {confirmedBookingDetails.specialRequestStatus.honored ? "✓" : "⚠"}
+                          <span>
+                            {confirmedBookingDetails.specialRequestStatus.honored 
+                              ? "Special request confirmed" 
+                              : "Special request note"}
+                            {confirmedBookingDetails.specialRequestStatus.note && 
+                              `: ${confirmedBookingDetails.specialRequestStatus.note}`}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </CardHeader>
@@ -1568,7 +1680,8 @@ export default function BatchStatusPage() {
                                 {getOutcomeMessage(
                                   item.result, 
                                   (hasAvailability || hasAlternative) ? handleBook : undefined,
-                                  query ? { date: query.date, time: query.time, party_size: query.party_size } : undefined
+                                  query ? { date: query.date, time: query.time, party_size: query.party_size } : undefined,
+                                  confirmedBookingDetails?.placeId === (item.place_id || item.id)
                                 )}
                               </div>
                             )}
@@ -1592,10 +1705,19 @@ export default function BatchStatusPage() {
           onOpenChange={setBookingModalOpen}
           booking={bookingDetails}
           userInfo={userInfo}
+          hasOtherAvailable={otherAvailableCount > 0}
+          onTryAnother={() => {
+            // Clear current booking details so user can pick another
+            setBookingDetails(null)
+            // Scroll to results section
+            window.scrollTo({ top: 0, behavior: 'smooth' })
+          }}
           onComplete={(success, bookingId) => {
-            if (success && bookingId) {
+            if (success && bookingId && bookingDetails) {
               setConfirmedBookingId(bookingId)
-              // TODO: Could release holds at other restaurants here
+              setConfirmedBookingDetails(bookingDetails)
+              // Release holds at other restaurants
+              releaseOtherHolds(bookingDetails.placeId)
             }
             setBookingModalOpen(false)
           }}

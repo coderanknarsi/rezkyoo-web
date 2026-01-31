@@ -38,6 +38,13 @@ export type GetBookingStatusInput = {
   bookingId: string
 }
 
+export type ReleaseHoldInput = {
+  batchId: string
+  placeId: string
+  restaurantName: string
+  restaurantPhone: string
+}
+
 export type BookingStatus = "pending_confirmation" | "calling" | "confirmed" | "failed"
 
 export type BookingRecord = {

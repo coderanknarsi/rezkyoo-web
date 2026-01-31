@@ -36,6 +36,8 @@ interface BookingModalProps {
   booking: BookingDetails
   userInfo: UserInfo
   onComplete: (success: boolean, bookingId?: string) => void
+  onTryAnother?: () => void  // Called when user wants to try a different restaurant after failure
+  hasOtherAvailable?: boolean  // Whether there are other available restaurants to try
 }
 
 export function BookingModal({
@@ -44,6 +46,8 @@ export function BookingModal({
   booking,
   userInfo,
   onComplete,
+  onTryAnother,
+  hasOtherAvailable,
 }: BookingModalProps) {
   const [status, setStatus] = React.useState<BookingStatus>("collecting")
   const [name, setName] = React.useState(userInfo.name || "")
@@ -330,17 +334,64 @@ export function BookingModal({
 
           {/* Success State */}
           {status === "confirmed" && (
-            <div className="flex flex-col items-center justify-center py-6 space-y-4">
-              <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center">
-                <CheckCircle className="h-10 w-10 text-emerald-500" />
+            <div className="flex flex-col py-4 space-y-4">
+              {/* Success header */}
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+                <div className="h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                  <CheckCircle className="h-7 w-7 text-emerald-500" />
+                </div>
+                <div>
+                  <p className="font-semibold text-emerald-800">Reservation Confirmed!</p>
+                  <p className="text-sm text-emerald-600">{statusMessage || "Your table is booked"}</p>
+                </div>
               </div>
-              <div className="text-center space-y-2">
-                <p className="text-sm text-zinc-600">{statusMessage}</p>
-                <p className="text-xs text-zinc-500">
-                  Confirmation details will be sent to your phone/email
-                </p>
+
+              {/* Booking details summary */}
+              <div className="rounded-lg bg-zinc-50 p-4 space-y-3">
+                <div className="font-semibold text-lg">{booking.restaurantName}</div>
+                <div className="grid grid-cols-3 gap-3 text-sm">
+                  <div className="flex flex-col items-center p-2 rounded bg-white border">
+                    <Calendar className="h-4 w-4 text-zinc-400 mb-1" />
+                    <span className="font-medium">{booking.date}</span>
+                  </div>
+                  <div className="flex flex-col items-center p-2 rounded bg-white border">
+                    <Clock className="h-4 w-4 text-zinc-400 mb-1" />
+                    <span className="font-medium">{formatTime12Hour(displayTime)}</span>
+                  </div>
+                  <div className="flex flex-col items-center p-2 rounded bg-white border">
+                    <Users className="h-4 w-4 text-zinc-400 mb-1" />
+                    <span className="font-medium">{booking.partySize} guests</span>
+                  </div>
+                </div>
+                
+                {/* Special request status in confirmed view */}
+                {booking.specialRequestStatus && (
+                  <div className={`p-3 rounded-lg flex items-start gap-2 ${
+                    booking.specialRequestStatus.honored 
+                      ? "bg-emerald-50 border border-emerald-200 text-emerald-700" 
+                      : "bg-amber-50 border border-amber-200 text-amber-700"
+                  }`}>
+                    <span className="text-lg">{booking.specialRequestStatus.honored ? "✓" : "⚠"}</span>
+                    <div className="text-sm">
+                      <div className="font-medium">
+                        {booking.specialRequestStatus.honored ? "Special request confirmed" : "Special request note"}
+                      </div>
+                      {booking.specialRequestStatus.note && (
+                        <div className="mt-0.5 opacity-80">{booking.specialRequestStatus.note}</div>
+                      )}
+                      {booking.specialRequests && !booking.specialRequestStatus.note && (
+                        <div className="mt-0.5 opacity-80">{booking.specialRequests}</div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-              <Button onClick={() => onOpenChange(false)} className="w-full">
+
+              <p className="text-xs text-zinc-500 text-center">
+                Confirmation details will be sent to your phone/email
+              </p>
+              
+              <Button onClick={() => onOpenChange(false)} className="w-full bg-emerald-600 hover:bg-emerald-700">
                 Done
               </Button>
             </div>
@@ -348,23 +399,52 @@ export function BookingModal({
 
           {/* Failed State */}
           {status === "failed" && (
-            <div className="flex flex-col items-center justify-center py-6 space-y-4">
-              <div className="h-16 w-16 rounded-full bg-red-100 flex items-center justify-center">
-                <XCircle className="h-10 w-10 text-red-500" />
+            <div className="flex flex-col py-4 space-y-4">
+              {/* Failure header */}
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-red-50 border border-red-200">
+                <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                  <XCircle className="h-7 w-7 text-red-500" />
+                </div>
+                <div>
+                  <p className="font-semibold text-red-800">Booking Failed</p>
+                  <p className="text-sm text-red-600">{statusMessage || "We couldn't confirm your reservation"}</p>
+                </div>
               </div>
-              <div className="text-center space-y-2">
-                <p className="text-sm text-zinc-600">{statusMessage}</p>
-                <p className="text-xs text-zinc-500">
-                  You can try again or call the restaurant directly
-                </p>
+
+              {/* Restaurant info */}
+              <div className="rounded-lg bg-zinc-50 p-3 text-sm">
+                <div className="font-medium">{booking.restaurantName}</div>
+                <div className="text-zinc-500">
+                  {booking.date} at {formatTime12Hour(displayTime)} • {booking.partySize} guests
+                </div>
               </div>
-              <div className="flex gap-2 w-full">
-                <Button variant="outline" onClick={() => setStatus("collecting")} className="flex-1">
-                  Try Again
-                </Button>
-                <Button onClick={() => onOpenChange(false)} className="flex-1">
-                  Close
-                </Button>
+
+              <p className="text-sm text-zinc-600 text-center">
+                {hasOtherAvailable 
+                  ? "Don't worry — other restaurants from your search are still available!"
+                  : "You can try again or call the restaurant directly."}
+              </p>
+
+              <div className="flex flex-col gap-2">
+                {hasOtherAvailable && onTryAnother && (
+                  <Button 
+                    onClick={() => {
+                      onTryAnother()
+                      onOpenChange(false)
+                    }} 
+                    className="w-full bg-red-600 hover:bg-red-700"
+                  >
+                    Try Another Restaurant
+                  </Button>
+                )}
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setStatus("collecting")} className="flex-1">
+                    Retry This One
+                  </Button>
+                  <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
+                    Close
+                  </Button>
+                </div>
               </div>
             </div>
           )}

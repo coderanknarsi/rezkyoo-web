@@ -4,6 +4,7 @@ import type {
   StartCallsInput,
   ConfirmBookingInput,
   GetBookingStatusInput,
+  ReleaseHoldInput,
 } from "@/lib/mcp/types"
 
 let requestId = 0
@@ -121,6 +122,10 @@ export async function confirmBooking(args: ConfirmBookingInput) {
 
 export async function getBookingStatus(args: GetBookingStatusInput) {
   return callTool("get_booking_status", args)
+}
+
+export async function releaseHold(args: ReleaseHoldInput) {
+  return callTool("release_hold", args)
 }
 
 export { callTool }
