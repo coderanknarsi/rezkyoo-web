@@ -210,6 +210,9 @@ type SimulatedBooking = {
     name: string
     phone: string
     place_id: string
+    address?: string
+    lat?: number
+    lng?: number
   }
   customer: {
     name: string
@@ -220,11 +223,16 @@ type SimulatedBooking = {
     date: string
     time: string
   }
-  status: "pending_confirmation" | "calling" | "confirmed" | "failed"
+  status: "pending_confirmation" | "calling" | "confirmed" | "failed" | "cancelled"
   createdAt: string
   confirmsAt?: number  // Epoch time when the simulated call "confirms"
   confirmedAt?: string
+  cancelledAt?: string
   failureReason?: string
+  specialRequestStatus?: {
+    honored: boolean
+    note?: string
+  }
 }
 
 const BOOKING_STORE_KEY = "__rezkyooBookingStore"

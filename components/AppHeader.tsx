@@ -120,6 +120,13 @@ export function AppHeader() {
                     )}
                 </div>
             </div>
+
+            {/* Simulation Mode Banner */}
+            {process.env.NEXT_PUBLIC_REZKYOO_CALL_MODE === "simulate" && (
+                <div className="bg-amber-500 text-amber-950 text-center text-xs font-semibold py-1 px-2">
+                    🧪 SIMULATION MODE — No real calls are being made
+                </div>
+            )}
         </header>
     )
 }

@@ -10,6 +10,9 @@ import { formatPhoneNumber, isValidPhoneNumber } from "@/lib/user-profile"
 export interface BookingDetails {
   restaurantName: string
   restaurantPhone: string
+  restaurantAddress?: string
+  restaurantLat?: number
+  restaurantLng?: number
   placeId: string
   batchId: string
   partySize: number
@@ -108,6 +111,9 @@ export function BookingModal({
           placeId: booking.placeId,
           restaurantName: booking.restaurantName,
           restaurantPhone: booking.restaurantPhone,
+          restaurantAddress: booking.restaurantAddress,
+          restaurantLat: booking.restaurantLat,
+          restaurantLng: booking.restaurantLng,
           customerName: name.trim(),
           customerPhone: phone.trim(),
           partySize: booking.partySize,

@@ -1528,6 +1528,9 @@ export default function BatchStatusPage() {
                     setBookingDetails({
                       restaurantName: item.name || "Unknown Restaurant",
                       restaurantPhone: item.phone || "",
+                      restaurantAddress: item.address || enrichedData[item.place_id || ""]?.formatted_address,
+                      restaurantLat: item.lat,
+                      restaurantLng: item.lng,
                       placeId: item.place_id || item.id || "",
                       batchId: batchId || "",
                       partySize: query?.party_size || 2,
@@ -1733,8 +1736,11 @@ export default function BatchStatusPage() {
               setConfirmedBookingDetails(bookingDetails)
               // Release holds at other restaurants
               releaseOtherHolds(bookingDetails.placeId)
+              // Redirect to booking confirmation page
+              router.push(`/app/booking/${bookingId}`)
+            } else {
+              setBookingModalOpen(false)
             }
-            setBookingModalOpen(false)
           }}
         />
       )}

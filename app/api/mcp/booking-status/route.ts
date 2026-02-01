@@ -35,11 +35,20 @@ export async function POST(req: Request) {
         const success = Math.random() < 0.9
         const newStatus = success ? "confirmed" : "failed"
         
+        // Add special request status on confirmation
+        const specialRequestStatus = success ? {
+          honored: Math.random() < 0.8,  // 80% chance request is honored
+          note: "We'll have everything ready for you!"
+        } : undefined
+
         updateSimulatedBooking(bookingId, {
           status: newStatus,
           confirmedAt: success ? new Date().toISOString() : undefined,
           failureReason: success ? undefined : "Restaurant could not confirm at this time",
+          specialRequestStatus,
         })
+
+        const updatedBooking = { ...booking, status: newStatus, confirmedAt: success ? new Date().toISOString() : undefined, specialRequestStatus }
 
         return Response.json({
           ok: true,
@@ -47,7 +56,7 @@ export async function POST(req: Request) {
           message: success
             ? `Your reservation at ${booking.restaurant.name} is confirmed for ${booking.reservation.date} at ${booking.reservation.time}!`
             : "The restaurant was unable to confirm your reservation at this time.",
-          booking: { ...booking, status: newStatus },
+          booking: updatedBooking,
         })
       }
 
