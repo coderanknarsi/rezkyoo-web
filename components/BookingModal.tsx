@@ -24,6 +24,7 @@ export interface BookingDetails {
     honored: boolean
     note?: string
   }
+  requiresDeposit?: boolean  // Credit card required for booking
 }
 
 export interface UserInfo {
@@ -276,6 +277,21 @@ export function BookingModal({
             {booking.specialRequests && !booking.specialRequestStatus && (
               <div className="mt-2 p-2 rounded text-xs bg-zinc-100 text-zinc-600">
                 <span className="font-medium">Special request:</span> {booking.specialRequests}
+              </div>
+            )}
+            {/* Credit Card Required Notice */}
+            {booking.requiresDeposit && (
+              <div className="mt-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800">
+                <div className="flex items-start gap-2">
+                  <span className="text-lg">💳</span>
+                  <div>
+                    <div className="font-medium text-sm">Credit card required</div>
+                    <div className="text-xs mt-0.5 opacity-80">
+                      This restaurant requires a credit card to hold your reservation.
+                      They will call you directly at your phone number to collect card details.
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>

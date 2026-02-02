@@ -195,6 +195,7 @@ type CallResult = {
     honored: boolean
     note?: string
   }
+  requires_deposit?: boolean  // Credit card required for booking
 }
 
 type EnrichedPlaceData = {
@@ -440,12 +441,24 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
     </div>
   ) : null
 
+  // Credit card required indicator (for non-group bookings)
+  const creditCardInfo = result.requires_deposit ? (
+    <div className="mt-2 p-2 rounded text-xs flex items-start gap-2 bg-amber-50 border border-amber-200 text-amber-700">
+      <span className="text-base">💳</span>
+      <div>
+        <div className="font-medium">Credit card required</div>
+        <div className="mt-0.5 opacity-80">Restaurant will call you to collect card details</div>
+      </div>
+    </div>
+  ) : null
+
   if (result.outcome === "hold_confirmed") {
     return (
       <div className="rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 p-4 text-sm">
         <div className="font-semibold text-emerald-700">🎉 Table on hold!</div>
         {result.time_held && <div className="text-emerald-600">Held until: {result.time_held}</div>}
         {result.perks && <div className="mt-1 text-emerald-600">Perks: {result.perks}</div>}
+        {creditCardInfo}
         {specialRequestInfo}
         {result.ai_summary && <div className="mt-2 text-emerald-600/80">{result.ai_summary}</div>}
         {reservationInfo}
@@ -469,6 +482,7 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
     return (
       <div className="rounded-lg bg-gradient-to-r from-rose-50 to-orange-50 border border-orange-200 p-4 text-sm">
         <div className="font-semibold text-orange-700">✨ Table available!</div>
+        {creditCardInfo}
         {specialRequestInfo}
         {result.ai_summary && <div className="mt-1 text-orange-600">{result.ai_summary}</div>}
         {reservationInfo}
@@ -494,6 +508,7 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
       <div className="rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 p-4 text-sm">
         <div className="font-semibold text-amber-700">⏰ Alternative time available</div>
         <div className="text-amber-800 font-medium text-base mt-1">Available at: {altTime}</div>
+        {creditCardInfo}
         {specialRequestInfo}
         {result.ai_summary && <div className="mt-1 text-amber-600/80">{result.ai_summary}</div>}
         {reservation && (reservation.date || reservation.party_size) && (
@@ -1555,6 +1570,7 @@ export default function BatchStatusPage() {
                       alternativeTime: alternativeTime,
                       specialRequests: query?.special_requests,
                       specialRequestStatus: item.result?.special_request_status,
+                      requiresDeposit: item.result?.requires_deposit,
                     })
                     setBookingModalOpen(true)
                   }
