@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { ArrowLeft, User, Mail, Calendar, CreditCard, History, Phone } from "lucide-react"
+import { ArrowLeft, User, Mail, Calendar, CreditCard, History, Phone, CalendarCheck } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -214,7 +214,17 @@ export default function AccountPage() {
                                     Quick Links
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="space-y-3">
+                                <Button
+                                    asChild
+                                    variant="outline"
+                                    className="w-full justify-start border-zinc-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                                >
+                                    <Link href="/app/account/reservations">
+                                        <CalendarCheck className="h-4 w-4 mr-2" />
+                                        My Reservations
+                                    </Link>
+                                </Button>
                                 <Button
                                     asChild
                                     variant="outline"

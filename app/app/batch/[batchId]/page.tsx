@@ -634,17 +634,33 @@ export default function BatchStatusPage() {
 
   // Fetch user profile for booking modal
   React.useEffect(() => {
-    if (user?.uid) {
-      getUserProfile(user.uid).then((profile) => {
-        if (profile) {
-          setUserInfo({
-            name: profile.displayName || undefined,
-            phone: profile.phoneNumber || undefined,
-          })
-        }
-      })
+    let cancelled = false
+
+    async function loadUserInfo() {
+      if (!user?.uid) return
+
+      try {
+        const profile = await getUserProfile(user.uid)
+        if (cancelled) return
+
+        setUserInfo({
+          name: profile?.displayName || user.displayName || undefined,
+          phone: profile?.phoneNumber || user.phoneNumber || undefined,
+        })
+      } catch (error) {
+        if (cancelled) return
+        setUserInfo({
+          name: user.displayName || undefined,
+          phone: user.phoneNumber || undefined,
+        })
+      }
     }
-  }, [user?.uid])
+
+    loadUserInfo()
+    return () => {
+      cancelled = true
+    }
+  }, [user?.uid, user?.displayName])
 
   const fetchStatus = React.useCallback(async () => {
     if (!batchId) return

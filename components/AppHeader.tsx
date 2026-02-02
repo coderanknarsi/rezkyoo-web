@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { User, LogOut, Settings, History, ChevronDown } from "lucide-react"
+import { User, LogOut, Settings, History, ChevronDown, CalendarCheck } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
@@ -88,6 +88,14 @@ export function AppHeader() {
                                         >
                                             <Settings className="h-4 w-4" />
                                             Account Settings
+                                        </Link>
+                                        <Link
+                                            href="/app/account/reservations"
+                                            onClick={() => setDropdownOpen(false)}
+                                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                                        >
+                                            <CalendarCheck className="h-4 w-4" />
+                                            My Reservations
                                         </Link>
                                         <Link
                                             href="/app/account/history"

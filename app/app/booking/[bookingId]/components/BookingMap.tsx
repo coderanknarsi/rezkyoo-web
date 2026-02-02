@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import React, { useState } from "react"
 import { MapPin } from "lucide-react"
 
 interface BookingMapProps {
@@ -9,104 +9,68 @@ interface BookingMapProps {
   name: string
 }
 
-export default function BookingMap({ lat, lng, name }: BookingMapProps) {
-  const mapRef = useRef<HTMLDivElement>(null)
-  const mapInstanceRef = useRef<google.maps.Map | null>(null)
-  const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null)
-
-  useEffect(() => {
-    if (!mapRef.current) return
-
-    const initMap = async () => {
-      // Check if Google Maps is loaded
-      if (!window.google?.maps) {
-        // Load Google Maps script
-        const script = document.createElement("script")
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=marker`
-        script.async = true
-        script.defer = true
-        script.onload = () => createMap()
-        document.head.appendChild(script)
-        return
-      }
-      
-      createMap()
-    }
-
-    const createMap = async () => {
-      if (!mapRef.current || !window.google?.maps) return
-
-      const { Map } = await google.maps.importLibrary("maps") as google.maps.MapsLibrary
-      const { AdvancedMarkerElement } = await google.maps.importLibrary("marker") as google.maps.MarkerLibrary
-
-      const position = { lat, lng }
-
-      // Create map
-      const map = new Map(mapRef.current, {
-        zoom: 15,
-        center: position,
-        mapId: process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID",
-        disableDefaultUI: true,
-        zoomControl: true,
-        gestureHandling: "cooperative",
-      })
-
-      mapInstanceRef.current = map
-
-      // Create custom marker element
-      const markerContent = document.createElement("div")
-      markerContent.innerHTML = `
-        <div style="
-          background: #ef4444;
-          color: white;
-          padding: 8px 12px;
-          border-radius: 20px;
-          font-weight: 600;
-          font-size: 14px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-          white-space: nowrap;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        ">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-            <circle cx="12" cy="10" r="3"></circle>
-          </svg>
-          ${name}
+// Use Static Maps API - much simpler and more reliable
+const BookingMap = React.memo(function BookingMap({ lat, lng, name }: BookingMapProps) {
+  const [imageError, setImageError] = useState(false)
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ""
+  
+  // Validate coordinates
+  if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+    return (
+      <div
+        className="h-64 rounded-xl overflow-hidden border border-zinc-200 shadow-sm bg-zinc-100 flex items-center justify-center"
+        style={{ minHeight: "256px" }}
+      >
+        <div className="flex flex-col items-center gap-2 text-zinc-400">
+          <MapPin className="h-8 w-8" />
+          <span className="text-xs">Map unavailable</span>
         </div>
-      `
+      </div>
+    )
+  }
 
-      // Create marker
-      const marker = new AdvancedMarkerElement({
-        map,
-        position,
-        content: markerContent,
-        title: name,
-      })
+  // Build static map URL
+  const staticMapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=15&size=600x256&scale=2&maptype=roadmap&markers=color:red%7Clabel:R%7C${lat},${lng}&key=${apiKey}`
 
-      markerRef.current = marker
-    }
-
-    initMap()
-
-    return () => {
-      if (markerRef.current) {
-        markerRef.current.map = null
-      }
-    }
-  }, [lat, lng, name])
+  if (imageError || !apiKey) {
+    // Fallback to OpenStreetMap embed if Google fails
+    const osmUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.01},${lat - 0.005},${lng + 0.01},${lat + 0.005}&layer=mapnik&marker=${lat},${lng}`
+    
+    return (
+      <div
+        className="h-64 rounded-xl overflow-hidden border border-zinc-200 shadow-sm"
+        style={{ minHeight: "256px" }}
+      >
+        <iframe
+          src={osmUrl}
+          width="100%"
+          height="100%"
+          style={{ border: 0 }}
+          loading="lazy"
+          title={`Map showing ${name}`}
+        />
+      </div>
+    )
+  }
 
   return (
     <div
-      ref={mapRef}
-      className="h-64 rounded-xl overflow-hidden border border-zinc-200 shadow-sm"
+      className="h-64 rounded-xl overflow-hidden border border-zinc-200 shadow-sm relative"
       style={{ minHeight: "256px" }}
     >
-      {/* Fallback while loading */}
-      <div className="h-full w-full bg-zinc-100 flex items-center justify-center">
-        <MapPin className="h-8 w-8 text-zinc-300" />
+      <img
+        src={staticMapUrl}
+        alt={`Map showing location of ${name}`}
+        className="w-full h-full object-cover"
+        onError={() => setImageError(true)}
+      />
+      {/* Restaurant name overlay */}
+      <div className="absolute bottom-3 left-3 bg-red-500 text-white px-3 py-1.5 rounded-full text-sm font-semibold shadow-lg flex items-center gap-1.5">
+        <MapPin className="h-4 w-4" />
+        {name}
       </div>
     </div>
   )
-}
+})
+
+export default BookingMap

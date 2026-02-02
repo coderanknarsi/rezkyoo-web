@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { Phone, Search, Clock, CheckCircle, Users, Sparkles, Star, Shield, Quote, Zap, HeartHandshake, PhoneCall, UsersRound, Timer, PhoneOff } from "lucide-react"
+import { Phone, Search, Clock, CheckCircle, Users, Sparkles, Star, Shield, Quote, Zap, HeartHandshake, PhoneCall, UsersRound, Timer, PhoneOff, MapPin, XCircle } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 
@@ -209,7 +209,7 @@ export default function Home() {
           </div>
 
           {/* Differentiator Cards */}
-          <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
             {/* Real Human Calls */}
             <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-white to-red-50 p-6 shadow-sm transition-all hover:shadow-lg dark:from-zinc-900 dark:to-red-950/20">
               <div className="absolute top-0 right-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-red-100 dark:bg-red-900/20" />
@@ -220,6 +220,20 @@ export default function Home() {
                 <h3 className="mt-5 text-lg font-bold text-zinc-900 dark:text-white">Real Conversations</h3>
                 <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
                   We call restaurants and speak with staff directly. No automated systems, no impersonal forms — just a real voice getting you a real table.
+                </p>
+              </div>
+            </div>
+
+            {/* Every Restaurant */}
+            <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-white to-blue-50 p-6 shadow-sm transition-all hover:shadow-lg dark:from-zinc-900 dark:to-blue-950/20">
+              <div className="absolute top-0 right-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-blue-100 dark:bg-blue-900/20" />
+              <div className="relative">
+                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-lg shadow-blue-500/25">
+                  <MapPin className="h-7 w-7" />
+                </div>
+                <h3 className="mt-5 text-lg font-bold text-zinc-900 dark:text-white">Every Restaurant</h3>
+                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                  Many amazing restaurants aren't on OpenTable or Resy. We call any restaurant listed on Google — no limitations.
                 </p>
               </div>
             </div>
@@ -263,6 +277,82 @@ export default function Home() {
                 <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
                   Large parties, private rooms, prix-fixe menus — we handle the awkward negotiations so you can focus on celebrating.
                 </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Restaurant Coverage Visual */}
+          <div className="mt-16 rounded-2xl border bg-gradient-to-r from-blue-50 to-indigo-50 p-8 dark:from-blue-950/20 dark:to-indigo-950/20">
+            <div className="grid gap-8 lg:grid-cols-2 items-center">
+              {/* Left: Visual comparison */}
+              <div className="space-y-6">
+                <h3 className="text-xl font-bold text-zinc-900 dark:text-white">More Restaurants, More Choices</h3>
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  Booking platforms only list restaurants that pay to be on their platform. You're missing out on countless hidden gems.
+                </p>
+                
+                {/* Visual bars */}
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex items-center justify-between text-sm mb-2">
+                      <span className="font-medium text-zinc-700 dark:text-zinc-300">OpenTable / Resy</span>
+                      <span className="text-zinc-500">~15% of restaurants</span>
+                    </div>
+                    <div className="h-4 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+                      <div className="h-full w-[15%] bg-zinc-400 rounded-full" />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between text-sm mb-2">
+                      <span className="font-medium text-blue-700 dark:text-blue-400">RezKyoo</span>
+                      <span className="text-blue-600 dark:text-blue-400 font-semibold">100% of restaurants</span>
+                    </div>
+                    <div className="h-4 bg-blue-200 dark:bg-blue-900 rounded-full overflow-hidden">
+                      <div className="h-full w-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Right: Restaurant examples */}
+              <div className="bg-white dark:bg-zinc-900 rounded-xl p-6 shadow-lg border">
+                <h4 className="font-semibold text-zinc-900 dark:text-white mb-4">Restaurants you're missing:</h4>
+                <ul className="space-y-3">
+                  <li className="flex items-start gap-3">
+                    <XCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-medium text-zinc-800 dark:text-zinc-200">Family-owned trattorias</span>
+                      <p className="text-sm text-zinc-500">Too small to afford booking platform fees</p>
+                    </div>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <XCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-medium text-zinc-800 dark:text-zinc-200">Local neighborhood gems</span>
+                      <p className="text-sm text-zinc-500">Rely on word-of-mouth, not apps</p>
+                    </div>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <XCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-medium text-zinc-800 dark:text-zinc-200">Authentic ethnic cuisines</span>
+                      <p className="text-sm text-zinc-500">Often phone-only reservations</p>
+                    </div>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <XCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-medium text-zinc-800 dark:text-zinc-200">New restaurants</span>
+                      <p className="text-sm text-zinc-500">Haven't signed up for platforms yet</p>
+                    </div>
+                  </li>
+                </ul>
+                <div className="mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                  <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-medium">
+                    <CheckCircle className="h-5 w-5" />
+                    <span>RezKyoo can call them all</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

@@ -1,9 +1,10 @@
 import { requireUser } from "@/lib/auth"
 import { getBookingStatus } from "@/lib/mcp/client"
+import { adminDb } from "@/lib/firebase-admin"
 
 export async function POST(req: Request) {
   try {
-    await requireUser()
+    const user = await requireUser()
     const body = await req.json()
     const { bookingId } = body
 
@@ -49,6 +50,44 @@ export async function POST(req: Request) {
         })
 
         const updatedBooking = { ...booking, status: newStatus, confirmedAt: success ? new Date().toISOString() : undefined, specialRequestStatus }
+
+        // Save to user's reservations in Firestore if confirmed
+        if (success && adminDb) {
+          try {
+            const reservationData = {
+              batchId: booking.batchId,
+              placeId: booking.placeId,
+              restaurant: {
+                name: booking.restaurant.name,
+                phone: booking.restaurant.phone,
+                address: booking.restaurant.address,
+                lat: booking.restaurant.lat,
+                lng: booking.restaurant.lng,
+              },
+              customer: {
+                name: booking.customer.name,
+                phone: booking.customer.phone,
+              },
+              reservation: {
+                party_size: booking.reservation.party_size,
+                date: booking.reservation.date,
+                time: booking.reservation.time,
+              },
+              status: "confirmed",
+              confirmedAt: new Date().toISOString(),
+              createdAt: booking.createdAt,
+            }
+            await adminDb
+              .collection("users")
+              .doc(user.id)
+              .collection("reservations")
+              .doc(bookingId)
+              .set(reservationData)
+          } catch (saveErr) {
+            console.error("Failed to save reservation to Firestore:", saveErr)
+            // Don't fail the response - booking is still confirmed
+          }
+        }
 
         return Response.json({
           ok: true,

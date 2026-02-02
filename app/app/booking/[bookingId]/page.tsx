@@ -107,6 +107,7 @@ export default function BookingConfirmationPage() {
       if (!bookingId) return
 
       try {
+        // First try the booking-status endpoint (for active/recent bookings)
         const response = await fetch("/api/mcp/booking-status", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -115,11 +116,45 @@ export default function BookingConfirmationPage() {
 
         const data = await response.json()
 
-        if (!data.ok && !data.booking) {
-          throw new Error(data.error || "Booking not found")
+        if (data.ok && data.booking) {
+          setBooking(data.booking)
+          setLoading(false)
+          return
         }
 
-        setBooking(data.booking || data)
+        // If not found in active bookings, try to fetch from Firestore via API
+        const reservationResponse = await fetch(`/api/reservations/${bookingId}`)
+        const reservationData = await reservationResponse.json()
+        
+        if (reservationData.ok && reservationData.reservation) {
+          const reservation = reservationData.reservation
+          // Convert Reservation format to BookingData format
+          setBooking({
+            id: reservation.id,
+            status: reservation.status as BookingData["status"],
+            restaurant: {
+              name: reservation.restaurant.name,
+              phone: reservation.restaurant.phone,
+              place_id: reservation.placeId,
+              address: reservation.restaurant.address,
+              lat: reservation.restaurant.lat,
+              lng: reservation.restaurant.lng,
+            },
+            customer: {
+              name: reservation.customer.name,
+              phone: reservation.customer.phone,
+            },
+            reservation: reservation.reservation,
+            createdAt: reservation.createdAt,
+            confirmedAt: reservation.confirmedAt,
+            cancelledAt: reservation.cancelledAt,
+            specialRequestStatus: reservation.specialRequestStatus,
+          })
+          setLoading(false)
+          return
+        }
+
+        throw new Error(data.error || "Booking not found")
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load booking")
       } finally {
@@ -128,7 +163,7 @@ export default function BookingConfirmationPage() {
     }
 
     fetchBooking()
-  }, [bookingId])
+  }, [bookingId, user])
 
   const handleCopyPhone = async () => {
     if (!booking?.restaurant.phone) return

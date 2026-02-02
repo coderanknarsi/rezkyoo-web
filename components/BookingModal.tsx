@@ -64,7 +64,7 @@ export function BookingModal({
     if (open) {
       setStatus("collecting")
       setName(userInfo.name || "")
-      setPhone(userInfo.phone || "")
+      setPhone(userInfo.phone ? formatPhoneNumber(userInfo.phone) : "")
       setError(null)
       setBookingId(null)
       setStatusMessage("")
