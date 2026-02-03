@@ -25,6 +25,11 @@ export interface BookingDetails {
     note?: string
   }
   requiresDeposit?: boolean  // Credit card required for booking
+  // Large group (7+) specific fields
+  privateRoom?: "available" | "required" | "not_available"
+  minimumSpend?: string  // e.g., "$500", "$50 per person"
+  prixFixeRequired?: boolean
+  perks?: string  // e.g., "Free champagne toast"
 }
 
 export interface UserInfo {
@@ -291,6 +296,31 @@ export function BookingModal({
                       They will call you directly at your phone number to collect card details.
                     </div>
                   </div>
+                </div>
+              </div>
+            )}
+            {/* Large Party Info (7+ guests) */}
+            {(booking.privateRoom || booking.minimumSpend || booking.prixFixeRequired || booking.perks) && (
+              <div className="mt-2 p-3 rounded-lg bg-violet-50 border border-violet-200 text-violet-800">
+                <div className="font-medium text-sm mb-1 flex items-center gap-1">
+                  <span>👥</span> Large Party Details
+                </div>
+                <div className="text-xs space-y-1 opacity-90">
+                  {booking.privateRoom === "available" && (
+                    <div>🚪 Private room available</div>
+                  )}
+                  {booking.privateRoom === "required" && (
+                    <div>🚪 Private room required</div>
+                  )}
+                  {booking.minimumSpend && (
+                    <div>💰 Minimum spend: {booking.minimumSpend}</div>
+                  )}
+                  {booking.prixFixeRequired && (
+                    <div>🍽️ Prix fixe menu required</div>
+                  )}
+                  {booking.perks && (
+                    <div>🎁 Perks: {booking.perks}</div>
+                  )}
                 </div>
               </div>
             )}

@@ -196,6 +196,10 @@ type CallResult = {
     note?: string
   }
   requires_deposit?: boolean  // Credit card required for booking
+  // Large group (7+) specific fields
+  private_room?: "available" | "required" | "not_available"
+  minimum_spend?: string  // e.g., "$500", "$50 per person"
+  prix_fixe_required?: boolean
 }
 
 type EnrichedPlaceData = {
@@ -452,13 +456,40 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
     </div>
   ) : null
 
+  // Large group (7+) specific info
+  const hasGroupInfo = result.private_room || result.minimum_spend || result.prix_fixe_required || result.perks
+  const groupInfo = hasGroupInfo ? (
+    <div className="mt-2 p-2 rounded text-xs bg-violet-50 border border-violet-200 text-violet-700">
+      <div className="font-medium mb-1 flex items-center gap-1">
+        <span>👥</span> Large Party Details
+      </div>
+      <div className="space-y-1 opacity-90">
+        {result.private_room === "available" && (
+          <div className="flex items-center gap-1">🚪 Private room available</div>
+        )}
+        {result.private_room === "required" && (
+          <div className="flex items-center gap-1">🚪 Private room required</div>
+        )}
+        {result.minimum_spend && (
+          <div className="flex items-center gap-1">💰 Minimum spend: {result.minimum_spend}</div>
+        )}
+        {result.prix_fixe_required && (
+          <div className="flex items-center gap-1">🍽️ Prix fixe menu required</div>
+        )}
+        {result.perks && (
+          <div className="flex items-center gap-1">🎁 Perks: {result.perks}</div>
+        )}
+      </div>
+    </div>
+  ) : null
+
   if (result.outcome === "hold_confirmed") {
     return (
       <div className="rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 p-4 text-sm">
         <div className="font-semibold text-emerald-700">🎉 Table on hold!</div>
         {result.time_held && <div className="text-emerald-600">Held until: {result.time_held}</div>}
-        {result.perks && <div className="mt-1 text-emerald-600">Perks: {result.perks}</div>}
         {creditCardInfo}
+        {groupInfo}
         {specialRequestInfo}
         {result.ai_summary && <div className="mt-2 text-emerald-600/80">{result.ai_summary}</div>}
         {reservationInfo}
@@ -483,6 +514,7 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
       <div className="rounded-lg bg-gradient-to-r from-rose-50 to-orange-50 border border-orange-200 p-4 text-sm">
         <div className="font-semibold text-orange-700">✨ Table available!</div>
         {creditCardInfo}
+        {groupInfo}
         {specialRequestInfo}
         {result.ai_summary && <div className="mt-1 text-orange-600">{result.ai_summary}</div>}
         {reservationInfo}
@@ -509,6 +541,7 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
         <div className="font-semibold text-amber-700">⏰ Alternative time available</div>
         <div className="text-amber-800 font-medium text-base mt-1">Available at: {altTime}</div>
         {creditCardInfo}
+        {groupInfo}
         {specialRequestInfo}
         {result.ai_summary && <div className="mt-1 text-amber-600/80">{result.ai_summary}</div>}
         {reservation && (reservation.date || reservation.party_size) && (
@@ -1571,6 +1604,11 @@ export default function BatchStatusPage() {
                       specialRequests: query?.special_requests,
                       specialRequestStatus: item.result?.special_request_status,
                       requiresDeposit: item.result?.requires_deposit,
+                      // Large group fields
+                      privateRoom: item.result?.private_room,
+                      minimumSpend: item.result?.minimum_spend,
+                      prixFixeRequired: item.result?.prix_fixe_required,
+                      perks: item.result?.perks,
                     })
                     setBookingModalOpen(true)
                   }
