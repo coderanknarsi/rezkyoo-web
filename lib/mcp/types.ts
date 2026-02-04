@@ -26,6 +26,9 @@ export type ConfirmBookingInput = {
   placeId: string
   restaurantName: string
   restaurantPhone: string
+  restaurantAddress?: string
+  restaurantLat?: number
+  restaurantLng?: number
   customerName: string
   customerPhone: string
   partySize: number
