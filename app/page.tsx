@@ -541,7 +541,7 @@ export default function Home() {
               />
             </Link>
             <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-6 text-sm text-zinc-500 dark:text-zinc-400">
-              <Link href="#" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Privacy Policy</Link>
+              <Link href="/privacy" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Privacy Policy</Link>
               <Link href="/terms" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Terms of Service</Link>
               <Link href="/contact" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Contact Us</Link>
             </div>
