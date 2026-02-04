@@ -38,6 +38,10 @@ export async function GET(request: NextRequest) {
 
         // Verify payment was successful
         if (p2pData.status === "SUCCESS" || p2pData.code === 0) {
+            if (!adminDb) {
+                console.error("❌ Firebase Admin not initialized")
+                return NextResponse.redirect(new URL("/app?error=firebase_admin_unavailable", request.url))
+            }
             // Update batch in Firestore to mark as paid
             await adminDb.collection("batches").doc(batchId).update({
                 paymentStatus: "paid",

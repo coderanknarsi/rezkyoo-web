@@ -208,6 +208,7 @@ type EnrichedPlaceData = {
   user_ratings_total?: number
   price_level?: number
   formatted_phone_number?: string
+  formatted_address?: string
   website?: string
   url?: string  // Google Maps URL
   editorial_summary?: {
@@ -918,6 +919,11 @@ export default function BatchStatusPage() {
   const available = items.filter(i =>
     i.result?.outcome === "available" || i.result?.outcome === "hold_confirmed"
   ).length
+
+  // Tiered pricing based on party size
+  const LARGE_GROUP_THRESHOLD = 7
+  const isLargeGroup = (query?.party_size || 2) >= LARGE_GROUP_THRESHOLD
+  const unlockPrice = isLargeGroup ? 3.99 : 1.99
   
   // Paywall logic:
   // - forceHideResults is a dev flag to always require payment
@@ -1380,20 +1386,34 @@ export default function BatchStatusPage() {
                               <Check className="h-4 w-4 text-emerald-600" />
                               Alternative time suggestions
                             </li>
+                            {isLargeGroup && (
+                              <li className="flex items-center gap-2">
+                                <Check className="h-4 w-4 text-emerald-600" />
+                                Private room & minimum spend info
+                              </li>
+                            )}
                           </ul>
                         </div>
 
                         {/* Price callout */}
                         <div className="text-center text-zinc-900">
-                          <span className="text-2xl font-bold">$2.99</span>
+                          <span className="text-2xl font-bold">${unlockPrice.toFixed(2)}</span>
                           <span className="text-zinc-500 text-sm ml-2">one-time unlock</span>
+                          {isLargeGroup && (
+                            <div className="text-xs text-zinc-500 mt-1">
+                              Large group pricing ({query?.party_size}+ guests)
+                            </div>
+                          )}
                         </div>
 
                         {/* PayPal Buttons */}
                         <PayPalPayment
                           batchId={batchId || ""}
-                          amount={2.99}
-                          description={`Unlock ${available} available restaurants`}
+                          amount={unlockPrice}
+                          description={isLargeGroup 
+                            ? `Unlock ${available} restaurants for party of ${query?.party_size}` 
+                            : `Unlock ${available} available restaurants`
+                          }
                         />
                       </div>
                     ) : (
