@@ -51,9 +51,22 @@ export async function POST(req: Request) {
     }
 
     const result = await getBatchStatus(requestBody)
+    
+    // Validate the response structure
+    if (!result || typeof result !== 'object') {
+      console.error("MCP get_batch_status returned invalid result:", result)
+      return Response.json({ ok: false, error: "Invalid response from server" }, { status: 502 })
+    }
+    
+    // Log for debugging
+    if (!Array.isArray(result.items)) {
+      console.error("MCP get_batch_status items is not an array:", JSON.stringify(result).slice(0, 500))
+    }
+    
     return Response.json(result)
   } catch (error) {
     const message = error instanceof Error ? error.message : "Request failed"
+    console.error("get-batch-status error:", message)
     return Response.json({ ok: false, error: message }, { status: 500 })
   }
 }
