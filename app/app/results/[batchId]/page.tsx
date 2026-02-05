@@ -454,13 +454,13 @@ export default function SearchResultsPage() {
             <h1 className="text-2xl font-bold">We found {items.length} restaurants</h1>
             {query && (
               <div className="flex flex-wrap items-center gap-2 mt-2 text-sm text-zinc-600">
-                {query.craving?.chips && query.craving.chips.length > 0 && (
+                {query.craving?.chips && Array.isArray(query.craving.chips) && query.craving.chips.length > 0 && (
                   <span>🍽️ {query.craving.chips.join(", ")}</span>
                 )}
-                {query.location && <span>📍 {query.location}</span>}
+                {query.location && typeof query.location === 'string' && <span>📍 {query.location}</span>}
                 {query.party_size && <span>👥 {query.party_size} guests</span>}
-                {query.date && <span>📅 {query.date}</span>}
-                {query.time && <span>🕐 {formatTime12Hour(query.time)}</span>}
+                {query.date && typeof query.date === 'string' && <span>📅 {query.date}</span>}
+                {query.time && typeof query.time === 'string' && <span>🕐 {formatTime12Hour(query.time)}</span>}
               </div>
             )}
           </div>

@@ -1288,9 +1288,9 @@ export default function BatchStatusPage() {
               {query && (
                 <div className="flex flex-wrap items-center gap-2 mt-3 text-sm">
                   {/* Show user's craving/search term - filter out confusing generic terms */}
-                  {query.craving?.chips?.filter(chip =>
+                  {Array.isArray(query.craving?.chips) && query.craving.chips.filter(chip =>
                     // Filter out generic/meaningless chips
-                    !['cuisine', 'dishes', 'dish', '$', '$$', '$$$', 'no exclusions', 'any', 'food', 'restaurant', 'restaurants'].includes(chip.toLowerCase())
+                    typeof chip === 'string' && !['cuisine', 'dishes', 'dish', '$', '$$', '$$$', 'no exclusions', 'any', 'food', 'restaurant', 'restaurants'].includes(chip.toLowerCase())
                   ).slice(0, 3).map((chip, i) => (
                     <span key={i} className="px-2 py-1 rounded-full bg-red-100 text-red-700 font-medium">
                       {chip}
@@ -1301,17 +1301,17 @@ export default function BatchStatusPage() {
                       {query.party_size} guests
                     </span>
                   )}
-                  {query.time && (
+                  {query.time && typeof query.time === 'string' && (
                     <span className="px-2 py-1 rounded-full bg-zinc-100 text-zinc-700">
                       {formatTime12Hour(query.time)}
                     </span>
                   )}
-                  {query.date && (
+                  {query.date && typeof query.date === 'string' && (
                     <span className="px-2 py-1 rounded-full bg-zinc-100 text-zinc-700">
                       {query.date}
                     </span>
                   )}
-                  {query.location && (
+                  {query.location && typeof query.location === 'string' && (
                     <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 flex items-center gap-1">
                       <MapPin className="h-3 w-3" />
                       {query.location.length > 30 ? query.location.substring(0, 30) + "..." : query.location}
