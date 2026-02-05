@@ -68,10 +68,9 @@ async function callTool(toolName: string, args: any): Promise<any> {
 
   // Unwrap MCP SDK response format
   // The SDK returns: { result: { content: [{ type: "text", text: "..." }] } }
-  // We need to extract and parse the actual tool output
+  // We need to extract and parse the actual tool output from the text field
   const result = jsonRpcResponse.result
   
-  // If result has MCP content array, extract and parse the text
   if (result?.content && Array.isArray(result.content)) {
     const textContent = result.content.find((c: any) => c.type === "text")
     if (textContent?.text) {
