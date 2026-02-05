@@ -66,8 +66,26 @@ async function callTool(toolName: string, args: any): Promise<any> {
     throw new Error(jsonRpcResponse.error.message || "MCP tool call failed")
   }
 
-  // Return the result from the JSON-RPC response
-  return jsonRpcResponse.result
+  // Unwrap MCP SDK response format
+  // The SDK returns: { result: { content: [{ type: "text", text: "..." }] } }
+  // We need to extract and parse the actual tool output
+  const result = jsonRpcResponse.result
+  
+  // If result has MCP content array, extract and parse the text
+  if (result?.content && Array.isArray(result.content)) {
+    const textContent = result.content.find((c: any) => c.type === "text")
+    if (textContent?.text) {
+      try {
+        return JSON.parse(textContent.text)
+      } catch {
+        // If not valid JSON, return as-is
+        return { text: textContent.text }
+      }
+    }
+  }
+  
+  // Fallback: return result directly (for non-MCP responses)
+  return result
 }
 
 // Parse SSE response to extract the final result
@@ -93,15 +111,25 @@ function parseSSEResponse(text: string): any {
   }
 
   // Handle JSON-RPC response wrapped in SSE
-  if (lastData.result) {
-    return lastData.result
-  }
-
   if (lastData.error) {
     throw new Error(lastData.error.message || "MCP tool call failed")
   }
 
-  return lastData
+  const result = lastData.result
+  
+  // Unwrap MCP SDK content array format
+  if (result?.content && Array.isArray(result.content)) {
+    const textContent = result.content.find((c: any) => c.type === "text")
+    if (textContent?.text) {
+      try {
+        return JSON.parse(textContent.text)
+      } catch {
+        return { text: textContent.text }
+      }
+    }
+  }
+
+  return result ?? lastData
 }
 
 export async function findRestaurants(args: FindRestaurantsInput) {
