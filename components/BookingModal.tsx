@@ -4,7 +4,7 @@ import * as React from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Loader2, Phone, User, Calendar, Users, Clock, CheckCircle, XCircle, AlertCircle, FileText } from "lucide-react"
+import { Loader2, Phone, User, Calendar, Users, Clock, CheckCircle, XCircle, AlertCircle, FileText, Timer } from "lucide-react"
 import { formatPhoneNumber, isValidPhoneNumber } from "@/lib/user-profile"
 
 export interface BookingDetails {
@@ -48,6 +48,42 @@ interface BookingModalProps {
   onComplete: (success: boolean, bookingId?: string) => void
   onTryAnother?: () => void  // Called when user wants to try a different restaurant after failure
   hasOtherAvailable?: boolean  // Whether there are other available restaurants to try
+  holdExpiresAt?: number  // Unix ms timestamp when holds expire
+}
+
+function HoldCountdown({ expiresAt }: { expiresAt: number }) {
+  const [timeLeft, setTimeLeft] = React.useState(() => Math.max(0, expiresAt - Date.now()))
+
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeLeft(Math.max(0, expiresAt - Date.now()))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [expiresAt])
+
+  if (timeLeft <= 0) {
+    return (
+      <div className="flex items-center justify-center gap-2 text-red-600 font-semibold text-sm p-2 rounded-lg bg-red-50 border border-red-200">
+        <AlertCircle className="h-4 w-4" />
+        <span>Hold may have expired — book quickly!</span>
+      </div>
+    )
+  }
+
+  const minutes = Math.floor(timeLeft / 60000)
+  const seconds = Math.floor((timeLeft % 60000) / 1000)
+  const isUrgent = minutes < 5
+
+  return (
+    <div className={`flex items-center justify-center gap-2 font-semibold text-sm p-2 rounded-lg border ${
+      isUrgent
+        ? "text-red-600 bg-red-50 border-red-200"
+        : "text-amber-600 bg-amber-50 border-amber-200"
+    }`}>
+      <Timer className={`h-4 w-4 ${isUrgent ? "animate-pulse" : ""}`} />
+      <span>Hold expires in {minutes}:{seconds.toString().padStart(2, '0')}</span>
+    </div>
+  )
 }
 
 export function BookingModal({
@@ -58,6 +94,7 @@ export function BookingModal({
   onComplete,
   onTryAnother,
   hasOtherAvailable,
+  holdExpiresAt,
 }: BookingModalProps) {
   const [status, setStatus] = React.useState<BookingStatus>("collecting")
   const [name, setName] = React.useState(userInfo.name || "")
@@ -239,6 +276,11 @@ export function BookingModal({
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Hold Countdown Timer */}
+          {holdExpiresAt && status === "collecting" && (
+            <HoldCountdown expiresAt={holdExpiresAt} />
+          )}
+
           {/* Reservation Summary */}
           <div className="rounded-lg bg-zinc-50 p-4 space-y-2">
             <div className="font-semibold text-lg">{booking.restaurantName}</div>

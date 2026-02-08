@@ -1994,6 +1994,7 @@ export default function BatchStatusPage() {
           onOpenChange={setBookingModalOpen}
           booking={bookingDetails}
           userInfo={userInfo}
+          holdExpiresAt={completedAt ? completedAt + HOLD_DURATION_MS : undefined}
           hasOtherAvailable={otherAvailableCount > 0}
           onTryAnother={() => {
             // Clear current booking details so user can pick another
