@@ -887,9 +887,14 @@ export default function BatchStatusPage() {
 
       setError(null)
       if (typeof data?.status === "string") {
-        // Track when batch first transitions to completed
-        if (data.status === "completed" && status !== "completed") {
-          setCompletedAt(Date.now())
+        // Use server-provided completedAt timestamp (ms) when available
+        if (data.status === "completed" && !completedAt) {
+          if (data.completedAt && typeof data.completedAt === "number") {
+            setCompletedAt(data.completedAt)
+          } else {
+            // Fallback: use current time if server didn't provide it
+            setCompletedAt(Date.now())
+          }
         }
         setStatus(data.status)
       }

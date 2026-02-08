@@ -46,6 +46,13 @@ export async function sendSms({ to, body }: SendSmsOptions): Promise<SendSmsResu
     return { ok: false, error: "Invalid phone number" }
   }
 
+  // Ensure from number is also E.164
+  const fromE164 = toE164(fromNumber)
+  if (!fromE164) {
+    console.warn("⚠️ SMS skipped — invalid from number:", fromNumber)
+    return { ok: false, error: "Invalid from number" }
+  }
+
   try {
     const response = await fetch(TELNYX_API_URL, {
       method: "POST",
@@ -54,7 +61,7 @@ export async function sendSms({ to, body }: SendSmsOptions): Promise<SendSmsResu
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        from: fromNumber,
+        from: fromE164,
         to: e164,
         text: body,
         type: "SMS",
