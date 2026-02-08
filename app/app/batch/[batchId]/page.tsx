@@ -625,12 +625,12 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
 
   if (result.outcome === "available") {
     return (
-      <div className="rounded-lg bg-gradient-to-r from-rose-50 to-orange-50 border border-orange-200 p-4 text-sm">
-        <div className="font-semibold text-orange-700">✨ Table available!</div>
+      <div className="rounded-lg bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 p-4 text-sm">
+        <div className="font-semibold text-emerald-700">✨ Table available!</div>
         {notes?.confirmed_time && (
-          <div className="text-orange-600 mt-1 font-medium">⏰ {notes.confirmed_time}</div>
+          <div className="text-emerald-600 mt-1 font-medium">⏰ {notes.confirmed_time}</div>
         )}
-        {summaryText && <p className="mt-2 text-orange-600/80">{summaryText}</p>}
+        {summaryText && <p className="mt-2 text-emerald-700/80">{summaryText}</p>}
         <OutcomeDetailChips result={result} callNotes={notes} />
         {specialRequestInfo}
         {keyQuotes}
@@ -638,7 +638,7 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
         {contactInfo}
         <TranscriptToggle transcript={result.transcript} />
         {bookedBadge || (onBook && (
-          <button onClick={onBook} className="mt-3 w-full py-2 px-4 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors">
+          <button onClick={onBook} className="mt-3 w-full py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition-colors">
             ✓ Book This Restaurant
           </button>
         ))}
@@ -663,7 +663,7 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
         {contactInfo}
         <TranscriptToggle transcript={result.transcript} />
         {bookedBadge || (onBook && (
-          <button onClick={onBook} className="mt-3 w-full py-2 px-4 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg transition-colors">
+          <button onClick={onBook} className="mt-3 w-full py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition-colors">
             Book for {altTime}
           </button>
         ))}
