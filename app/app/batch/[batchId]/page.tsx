@@ -659,23 +659,68 @@ type ReservationDetails = {
   special_requests?: string
 }
 
+// Detail chips for call conditions (deposits, private rooms, set menus, etc.)
+function OutcomeDetailChips({ result, callNotes }: { result: CallResult; callNotes?: CallNotes }) {
+  const chips: { icon: string; label: string; color: string }[] = []
+
+  // Prefer call_notes.group_details (richer data from AI analysis) over flat result fields
+  const gd = callNotes?.group_details
+
+  // Private room
+  const privateRoom = gd?.private_room || result.private_room
+  if (privateRoom === "required") chips.push({ icon: "🚪", label: "Private room required", color: "bg-violet-100 text-violet-700 border-violet-200" })
+  else if (privateRoom === "available") chips.push({ icon: "🚪", label: "Private room available", color: "bg-violet-50 text-violet-600 border-violet-200" })
+
+  // Prix fixe / set menu
+  const prixFixe = gd?.prix_fixe_required ?? result.prix_fixe_required
+  if (prixFixe) chips.push({ icon: "🍽️", label: "Set menu required", color: "bg-orange-100 text-orange-700 border-orange-200" })
+
+  // Deposit / credit card
+  const depositReq = gd?.deposit_required ?? result.requires_deposit
+  if (depositReq) {
+    const amt = gd?.deposit_amount
+    chips.push({ icon: "💳", label: amt ? `Deposit: ${amt}` : "Deposit required", color: "bg-amber-100 text-amber-700 border-amber-200" })
+  }
+
+  // Minimum spend
+  const minSpend = gd?.minimum_spend || result.minimum_spend
+  if (minSpend) chips.push({ icon: "💰", label: `Min spend: ${minSpend}`, color: "bg-amber-100 text-amber-700 border-amber-200" })
+
+  // Time limit
+  if (gd?.time_limit) chips.push({ icon: "⏱️", label: `Time limit: ${gd.time_limit}`, color: "bg-zinc-100 text-zinc-600 border-zinc-200" })
+
+  // Perks
+  const perks = callNotes?.perks || (result.perks ? [result.perks] : null)
+  if (perks && perks.length > 0) {
+    perks.forEach(p => chips.push({ icon: "🎁", label: p, color: "bg-emerald-50 text-emerald-700 border-emerald-200" }))
+  }
+
+  if (chips.length === 0) return null
+
+  return (
+    <div className="mt-3 flex flex-wrap gap-1.5">
+      {chips.map((chip, i) => (
+        <span key={i} className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${chip.color}`}>
+          <span>{chip.icon}</span>
+          {chip.label}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation?: ReservationDetails, isBooked?: boolean) {
   if (!result) return null
 
-  // Format reservation details for display
-  const reservationInfo = reservation && (reservation.date || reservation.time || reservation.party_size) ? (
-    <div className="mt-2 p-2 rounded bg-white/50 border border-current/10 text-xs">
-      <div className="font-medium mb-1">Reservation Details:</div>
-      <div className="flex flex-wrap gap-x-3 gap-y-1">
-        {reservation.date && <span>📅 {reservation.date}</span>}
-        {reservation.time && <span>🕐 {formatTime12Hour(reservation.time)}</span>}
-        {reservation.party_size && <span>👥 {reservation.party_size} guest{reservation.party_size > 1 ? 's' : ''}</span>}
-      </div>
-    </div>
-  ) : null
+  const notes = result.call_notes
+  const hasNotes = Boolean(notes?.summary)
 
-  // Format special request status (from restaurant response OR show user's request text)
-  const specialRequestInfo = result.special_request_status ? (
+  // AI-generated summary (preferred) or flat ai_summary fallback
+  const summaryText = notes?.summary || result.ai_summary
+
+  // Special request display — only show standalone block when there are NO call_notes
+  // (when call_notes exist, special requests are covered in the summary + CallNotesDisplay)
+  const specialRequestInfo = !hasNotes && result.special_request_status ? (
     <div className={`mt-2 p-2 rounded text-xs flex items-start gap-2 ${
       result.special_request_status.honored 
         ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
@@ -691,8 +736,7 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
         )}
       </div>
     </div>
-  ) : reservation?.special_requests ? (
-    // Show user's original request if no restaurant response yet
+  ) : !hasNotes && reservation?.special_requests ? (
     <div className="mt-2 p-2 rounded text-xs bg-blue-50 border border-blue-200 text-blue-700 flex items-start gap-2">
       <span className="text-base">📝</span>
       <div>
@@ -702,66 +746,38 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
     </div>
   ) : null
 
-  // Credit card required indicator (for non-group bookings)
-  const creditCardInfo = result.requires_deposit ? (
-    <div className="mt-2 p-2 rounded text-xs flex items-start gap-2 bg-amber-50 border border-amber-200 text-amber-700">
-      <span className="text-base">💳</span>
-      <div>
-        <div className="font-medium">Credit card required</div>
-        <div className="mt-0.5 opacity-80">Restaurant will call you to collect card details</div>
-      </div>
-    </div>
-  ) : null
-
-  // Large group (7+) specific info
-  const hasGroupInfo = result.private_room || result.minimum_spend || result.prix_fixe_required || result.perks
-  const groupInfo = hasGroupInfo ? (
-    <div className="mt-2 p-2 rounded text-xs bg-violet-50 border border-violet-200 text-violet-700">
-      <div className="font-medium mb-1 flex items-center gap-1">
-        <span>👥</span> Large Party Details
-      </div>
-      <div className="space-y-1 opacity-90">
-        {result.private_room === "available" && (
-          <div className="flex items-center gap-1">🚪 Private room available</div>
-        )}
-        {result.private_room === "required" && (
-          <div className="flex items-center gap-1">🚪 Private room required</div>
-        )}
-        {result.minimum_spend && (
-          <div className="flex items-center gap-1">💰 Minimum spend: {result.minimum_spend}</div>
-        )}
-        {result.prix_fixe_required && (
-          <div className="flex items-center gap-1">🍽️ Prix fixe menu required</div>
-        )}
-        {result.perks && (
-          <div className="flex items-center gap-1">🎁 Perks: {result.perks}</div>
-        )}
-      </div>
+  // Book button
+  const bookButton = isBooked ? (
+    <div className="mt-3 w-full py-2 px-4 bg-emerald-100 text-emerald-700 font-semibold rounded-lg text-center border-2 border-emerald-300">
+      ✓ Booked!
     </div>
   ) : null
 
   if (result.outcome === "hold_confirmed") {
     return (
       <div className="rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 p-4 text-sm">
-        <div className="font-semibold text-emerald-700">🎉 Table on hold!</div>
-        {result.time_held && <div className="text-emerald-600">Held until: {result.time_held}</div>}
-        {creditCardInfo}
-        {groupInfo}
-        {specialRequestInfo}
-        {result.ai_summary && <div className="mt-2 text-emerald-600/80">{result.ai_summary}</div>}
-        {reservationInfo}
-        {isBooked ? (
-          <div className="mt-3 w-full py-2 px-4 bg-emerald-100 text-emerald-700 font-semibold rounded-lg text-center border-2 border-emerald-300">
-            ✓ Booked!
+        <div className="font-semibold text-emerald-700 flex items-center gap-1.5">
+          <span>🎉</span> Table on hold!
+          {notes?.hold_status?.hold_duration && (
+            <span className="text-xs font-normal text-emerald-600/70">({notes.hold_status.hold_duration})</span>
+          )}
+        </div>
+        {(notes?.confirmed_time || result.time_held) && (
+          <div className="text-emerald-600 mt-1 font-medium">
+            ⏰ {notes?.confirmed_time || result.time_held}
           </div>
-        ) : onBook && (
+        )}
+        {summaryText && <div className="mt-2 text-emerald-700/80 text-sm">{summaryText}</div>}
+        <OutcomeDetailChips result={result} callNotes={notes} />
+        {specialRequestInfo}
+        {bookButton || (onBook && (
           <button
             onClick={onBook}
             className="mt-3 w-full py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition-colors"
           >
             ✓ Book This Restaurant
           </button>
-        )}
+        ))}
       </div>
     )
   }
@@ -770,37 +786,38 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
     return (
       <div className="rounded-lg bg-gradient-to-r from-rose-50 to-orange-50 border border-orange-200 p-4 text-sm">
         <div className="font-semibold text-orange-700">✨ Table available!</div>
-        {creditCardInfo}
-        {groupInfo}
+        {notes?.confirmed_time && (
+          <div className="text-orange-600 mt-1 font-medium">⏰ {notes.confirmed_time}</div>
+        )}
+        {summaryText && <div className="mt-2 text-orange-600/80 text-sm">{summaryText}</div>}
+        <OutcomeDetailChips result={result} callNotes={notes} />
         {specialRequestInfo}
-        {result.ai_summary && <div className="mt-1 text-orange-600">{result.ai_summary}</div>}
-        {reservationInfo}
-        {isBooked ? (
-          <div className="mt-3 w-full py-2 px-4 bg-emerald-100 text-emerald-700 font-semibold rounded-lg text-center border-2 border-emerald-300">
-            ✓ Booked!
-          </div>
-        ) : onBook && (
+        {bookButton || (onBook && (
           <button
             onClick={onBook}
             className="mt-3 w-full py-2 px-4 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors"
           >
             ✓ Book This Restaurant
           </button>
-        )}
+        ))}
       </div>
     )
   }
 
-  const altTime = result.alternative_time || result.alt_time
+  const altTime = notes?.alternative_times?.[0] || result.alternative_time || result.alt_time
   if (altTime) {
     return (
       <div className="rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 p-4 text-sm">
         <div className="font-semibold text-amber-700">⏰ Alternative time available</div>
         <div className="text-amber-800 font-medium text-base mt-1">Available at: {altTime}</div>
-        {creditCardInfo}
-        {groupInfo}
+        {notes?.alternative_times && notes.alternative_times.length > 1 && (
+          <div className="text-xs text-amber-600 mt-0.5">
+            Also available: {notes.alternative_times.slice(1).join(", ")}
+          </div>
+        )}
+        {summaryText && <div className="mt-2 text-amber-600/80 text-sm">{summaryText}</div>}
+        <OutcomeDetailChips result={result} callNotes={notes} />
         {specialRequestInfo}
-        {result.ai_summary && <div className="mt-1 text-amber-600/80">{result.ai_summary}</div>}
         {reservation && (reservation.date || reservation.party_size) && (
           <div className="mt-2 p-2 rounded bg-white/50 border border-amber-200/50 text-xs text-amber-700">
             <div className="font-medium mb-1">Original Request:</div>
@@ -811,18 +828,14 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
             </div>
           </div>
         )}
-        {isBooked ? (
-          <div className="mt-3 w-full py-2 px-4 bg-emerald-100 text-emerald-700 font-semibold rounded-lg text-center border-2 border-emerald-300">
-            ✓ Booked!
-          </div>
-        ) : onBook && (
+        {bookButton || (onBook && (
           <button
             onClick={onBook}
             className="mt-3 w-full py-2 px-4 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg transition-colors"
           >
             Book for {altTime}
           </button>
-        )}
+        ))}
       </div>
     )
   }
@@ -831,15 +844,15 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
     return (
       <div className="rounded-lg bg-zinc-100 border border-zinc-200 p-3 text-sm text-zinc-500">
         <div className="font-medium">No availability at requested time</div>
-        {result.ai_summary && <div className="mt-1 text-zinc-400">{result.ai_summary}</div>}
+        {summaryText && <div className="mt-1 text-zinc-400">{summaryText}</div>}
       </div>
     )
   }
 
-  if (result.ai_summary) {
+  if (summaryText) {
     return (
       <div className="rounded-lg bg-zinc-100 border border-zinc-200 p-4 text-sm text-zinc-600">
-        {result.ai_summary}
+        {summaryText}
       </div>
     )
   }
@@ -859,6 +872,7 @@ export default function BatchStatusPage() {
   const [status, setStatus] = React.useState<string | null>(null)
   const [paywallRequired, setPaywallRequired] = React.useState(false)
   const [completedAt, setCompletedAt] = React.useState<number | null>(null)
+  const [holdsExpired, setHoldsExpired] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [isStartingCalls, setIsStartingCalls] = React.useState(false)
   const [mapUrl, setMapUrl] = React.useState<string | null>(null)
@@ -873,6 +887,18 @@ export default function BatchStatusPage() {
     craving?: { chips?: string[] }
     special_requests?: string
   } | null>(null)
+
+  // Track hold expiry — disable payment after 15 minutes
+  React.useEffect(() => {
+    if (!completedAt) return
+    const checkExpiry = () => {
+      const expired = Date.now() >= completedAt + HOLD_DURATION_MS
+      setHoldsExpired(expired)
+    }
+    checkExpiry()
+    const interval = setInterval(checkExpiry, 1000)
+    return () => clearInterval(interval)
+  }, [completedAt])
 
   // Booking modal state
   const [bookingModalOpen, setBookingModalOpen] = React.useState(false)
@@ -1604,6 +1630,27 @@ export default function BatchStatusPage() {
                   !canViewResults ? (
                     // Check if there's anything worth paying for
                     available > 0 ? (
+                      holdsExpired ? (
+                        // Holds expired — disable payment, prompt new search
+                        <div className="text-center py-4 space-y-4">
+                          <div className="bg-white/95 rounded-lg p-4">
+                            <div className="flex items-center justify-center gap-2 text-red-600 font-semibold mb-2">
+                              <AlertCircle className="h-5 w-5" />
+                              <span>Holds have expired</span>
+                            </div>
+                            <p className="text-zinc-600 text-sm">
+                              The restaurants may have released the tables they were holding.
+                              Search again to get fresh availability.
+                            </p>
+                          </div>
+                          <Button
+                            onClick={() => router.push("/app/search")}
+                            className="w-full h-12 text-lg font-semibold bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg"
+                          >
+                            Search Again
+                          </Button>
+                        </div>
+                      ) : (
                       <div className="space-y-4">
                         {/* Hold Timer Warning */}
                         <div className="bg-white/95 rounded-lg p-3 text-center">
@@ -1672,6 +1719,7 @@ export default function BatchStatusPage() {
                           }
                         />
                       </div>
+                      )
                     ) : (
                       // No availability - don't charge, show sympathy
                       <div className="text-center text-white py-4">

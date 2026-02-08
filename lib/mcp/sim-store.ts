@@ -144,17 +144,32 @@ export function readSimBatch(batchId: string) {
         : item.outcome === "available"
           ? { 
               outcome: "available", 
-              ai_summary: "We can accommodate the requested time.",
-              // Simulate special request being honored for available outcomes
-              special_request_status: { honored: true, note: "We'll have everything ready for you!" }
+              ai_summary: "We can accommodate your party at the requested time. Table confirmed and held for 15 minutes under Rez Q.",
+              special_request_status: { honored: true, note: "We'll have everything ready for you!" },
+              call_notes: {
+                summary: "Restaurant confirmed availability at the requested time. Table is being held for 15 minutes under Rez Q. They mentioned they can accommodate the party and any special requests.",
+                availability_status: "available",
+                hold_status: { held: true, hold_name: "Rez Q", hold_duration: "15 minutes" },
+                confidence: "high",
+              },
             }
           : item.outcome === "alternative"
             ? { 
                 outcome: "not_available", 
                 alternative_time: "6:30 PM", 
-                ai_summary: "Only earlier seating available.",
-                // Simulate partial special request handling
-                special_request_status: { honored: false, note: "We can try to accommodate at the alternative time." }
+                ai_summary: "Requested time is fully booked. 6:30 PM seating available with a set menu for larger parties.",
+                special_request_status: { honored: false, note: "We can try to accommodate at the alternative time." },
+                call_notes: {
+                  summary: "The requested time slot is fully booked. Restaurant offered 6:30 PM as an alternative. For larger parties, a set menu is required and a credit card deposit is needed to hold the reservation.",
+                  availability_status: "alternative_offered",
+                  alternative_times: ["6:30 PM"],
+                  group_details: {
+                    prix_fixe_required: true,
+                    deposit_required: true,
+                    deposit_amount: "$50 per person",
+                  },
+                  confidence: "high",
+                },
               }
             : { outcome: "not_available", ai_summary: "No availability at requested time." }
 
