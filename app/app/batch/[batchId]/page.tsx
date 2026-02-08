@@ -292,210 +292,45 @@ type BatchItem = {
 // ===============================
 // Call Notes Display Component
 // ===============================
-function CallNotesDisplay({ callNotes, transcript }: { callNotes?: CallNotes; transcript?: TranscriptMessage[] }) {
+// Collapsible transcript viewer — used inside the unified outcome card
+function TranscriptToggle({ transcript }: { transcript?: TranscriptMessage[] }) {
   const [showTranscript, setShowTranscript] = React.useState(false)
 
-  if (!callNotes && (!transcript || transcript.length === 0)) {
-    return null
-  }
+  if (!transcript || transcript.length === 0) return null
 
   return (
-    <div className="mt-4 space-y-3">
-      {/* Call Notes Card */}
-      {callNotes && (
-        <div className="rounded-lg border border-zinc-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 dark:from-zinc-800 dark:to-zinc-900 dark:border-zinc-700">
-          <div className="flex items-start gap-2 mb-3">
-            <FileText className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <h4 className="font-semibold text-zinc-900 dark:text-white">Call Notes</h4>
-              {callNotes.confidence && (
-                <Badge 
-                  variant="secondary" 
-                  className={`text-xs mt-1 ${
-                    callNotes.confidence === "high" ? "bg-green-100 text-green-700" :
-                    callNotes.confidence === "medium" ? "bg-amber-100 text-amber-700" :
-                    "bg-zinc-100 text-zinc-600"
-                  }`}
-                >
-                  {callNotes.confidence} confidence
-                </Badge>
-              )}
-            </div>
-          </div>
-
-          {/* Summary */}
-          <p className="text-sm text-zinc-700 dark:text-zinc-300 mb-3">{callNotes.summary}</p>
-
-          {/* Key Details Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-            {/* Hold Status */}
-            {callNotes.hold_status?.held && (
-              <div className="flex items-center gap-2 p-2 rounded bg-white/60 dark:bg-zinc-800">
-                <Check className="h-4 w-4 text-green-600" />
-                <span className="text-zinc-700 dark:text-zinc-300">
-                  Hold confirmed
-                  {callNotes.hold_status.hold_name && ` under "${callNotes.hold_status.hold_name}"`}
-                  {callNotes.hold_status.hold_duration && ` (${callNotes.hold_status.hold_duration})`}
-                </span>
-              </div>
-            )}
-
-            {/* Confirmed Time */}
-            {callNotes.confirmed_time && (
-              <div className="flex items-center gap-2 p-2 rounded bg-white/60 dark:bg-zinc-800">
-                <Clock className="h-4 w-4 text-blue-600" />
-                <span className="text-zinc-700 dark:text-zinc-300">Time: {callNotes.confirmed_time}</span>
-              </div>
-            )}
-
-            {/* Alternative Times */}
-            {callNotes.alternative_times && callNotes.alternative_times.length > 0 && (
-              <div className="flex items-center gap-2 p-2 rounded bg-white/60 dark:bg-zinc-800 col-span-full">
-                <AlertCircle className="h-4 w-4 text-amber-600" />
-                <span className="text-zinc-700 dark:text-zinc-300">
-                  Alternatives: {callNotes.alternative_times.join(", ")}
-                </span>
-              </div>
-            )}
-
-            {/* Group Details */}
-            {callNotes.group_details && (
-              <>
-                {callNotes.group_details.private_room && (
-                  <div className="flex items-center gap-2 p-2 rounded bg-white/60 dark:bg-zinc-800">
-                    <Users className="h-4 w-4 text-purple-600" />
-                    <span className="text-zinc-700 dark:text-zinc-300">
-                      Private room: {callNotes.group_details.private_room}
-                    </span>
-                  </div>
-                )}
-                {callNotes.group_details.minimum_spend && (
-                  <div className="flex items-center gap-2 p-2 rounded bg-white/60 dark:bg-zinc-800">
-                    <span className="text-zinc-700 dark:text-zinc-300">
-                      💰 Min spend: {callNotes.group_details.minimum_spend}
-                    </span>
-                  </div>
-                )}
-                {callNotes.group_details.deposit_required && (
-                  <div className="flex items-center gap-2 p-2 rounded bg-white/60 dark:bg-zinc-800">
-                    <span className="text-zinc-700 dark:text-zinc-300">
-                      💳 Deposit required{callNotes.group_details.deposit_amount && `: ${callNotes.group_details.deposit_amount}`}
-                    </span>
-                  </div>
-                )}
-                {callNotes.group_details.prix_fixe_required && (
-                  <div className="flex items-center gap-2 p-2 rounded bg-white/60 dark:bg-zinc-800">
-                    <span className="text-zinc-700 dark:text-zinc-300">🍽️ Set menu required</span>
-                  </div>
-                )}
-                {callNotes.group_details.time_limit && (
-                  <div className="flex items-center gap-2 p-2 rounded bg-white/60 dark:bg-zinc-800">
-                    <span className="text-zinc-700 dark:text-zinc-300">⏱️ Time limit: {callNotes.group_details.time_limit}</span>
-                  </div>
-                )}
-              </>
-            )}
-
-            {/* Special Requests */}
-            {callNotes.special_requests && (
-              <div className={`flex items-center gap-2 p-2 rounded col-span-full ${
-                callNotes.special_requests.honored 
-                  ? "bg-green-100 dark:bg-green-900/30" 
-                  : "bg-amber-100 dark:bg-amber-900/30"
-              }`}>
-                {callNotes.special_requests.honored ? (
-                  <Check className="h-4 w-4 text-green-600" />
-                ) : (
-                  <AlertCircle className="h-4 w-4 text-amber-600" />
-                )}
-                <span className="text-zinc-700 dark:text-zinc-300">
-                  Special request: {callNotes.special_requests.details || (callNotes.special_requests.honored ? "Can accommodate" : "Cannot accommodate")}
-                </span>
-              </div>
-            )}
-
-            {/* Perks */}
-            {callNotes.perks && callNotes.perks.length > 0 && (
-              <div className="flex items-center gap-2 p-2 rounded bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/30 col-span-full">
-                <span className="text-amber-600">🎁</span>
-                <span className="text-zinc-700 dark:text-zinc-300">
-                  Perks: {callNotes.perks.join(", ")}
-                </span>
-              </div>
-            )}
-
-            {/* Contact Info */}
-            {callNotes.contact_info?.name && (
-              <div className="flex items-center gap-2 p-2 rounded bg-white/60 dark:bg-zinc-800">
-                <span className="text-zinc-700 dark:text-zinc-300">
-                  👤 Spoke with: {callNotes.contact_info.name}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Next Steps */}
-          {callNotes.next_steps && (
-            <div className="mt-3 p-3 rounded bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800">
-              <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                📌 Next: {callNotes.next_steps}
-              </p>
-            </div>
-          )}
-
-          {/* Key Quotes */}
-          {callNotes.key_quotes && callNotes.key_quotes.length > 0 && (
-            <div className="mt-3 space-y-2">
-              <h5 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider flex items-center gap-1">
-                <Quote className="h-3 w-3" />
-                Key Quotes
-              </h5>
-              {callNotes.key_quotes.map((quote, i) => (
-                <p key={i} className="text-sm text-zinc-600 dark:text-zinc-400 italic pl-3 border-l-2 border-zinc-200 dark:border-zinc-700">
-                  "{quote}"
-                </p>
-              ))}
-            </div>
-          )}
+    <div className="mt-3 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
+      <button
+        onClick={() => setShowTranscript(!showTranscript)}
+        className="w-full flex items-center justify-between p-2.5 bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 transition-colors"
+      >
+        <div className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-300">
+          <MessageSquare className="h-3.5 w-3.5" />
+          View Call Transcript ({transcript.length} messages)
         </div>
-      )}
-
-      {/* Transcript Toggle */}
-      {transcript && transcript.length > 0 && (
-        <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
-          <button
-            onClick={() => setShowTranscript(!showTranscript)}
-            className="w-full flex items-center justify-between p-3 bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 transition-colors"
-          >
-            <div className="flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              <MessageSquare className="h-4 w-4" />
-              View Call Transcript ({transcript.length} messages)
-            </div>
-            {showTranscript ? (
-              <ChevronUp className="h-4 w-4 text-zinc-500" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-zinc-500" />
-            )}
-          </button>
-          
-          {showTranscript && (
-            <div className="p-4 bg-white dark:bg-zinc-900 space-y-3 max-h-80 overflow-y-auto">
-              {transcript.map((msg, i) => (
-                <div key={i} className={`flex gap-3 ${msg.role === "assistant" ? "justify-start" : "justify-end"}`}>
-                  <div className={`max-w-[80%] rounded-lg p-3 text-sm ${
-                    msg.role === "assistant" 
-                      ? "bg-blue-100 text-blue-900 dark:bg-blue-900/30 dark:text-blue-100" 
-                      : "bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200"
-                  }`}>
-                    <div className="text-xs font-semibold mb-1 opacity-70">
-                      {msg.role === "assistant" ? "RezKyoo AI" : "Restaurant"}
-                    </div>
-                    <p>{msg.content}</p>
-                  </div>
+        {showTranscript ? (
+          <ChevronUp className="h-3.5 w-3.5 text-zinc-500" />
+        ) : (
+          <ChevronDown className="h-3.5 w-3.5 text-zinc-500" />
+        )}
+      </button>
+      
+      {showTranscript && (
+        <div className="p-4 bg-white dark:bg-zinc-900 space-y-3 max-h-80 overflow-y-auto">
+          {transcript.map((msg, i) => (
+            <div key={i} className={`flex gap-3 ${msg.role === "assistant" ? "justify-start" : "justify-end"}`}>
+              <div className={`max-w-[80%] rounded-lg p-3 text-sm ${
+                msg.role === "assistant" 
+                  ? "bg-blue-100 text-blue-900 dark:bg-blue-900/30 dark:text-blue-100" 
+                  : "bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200"
+              }`}>
+                <div className="text-xs font-semibold mb-1 opacity-70">
+                  {msg.role === "assistant" ? "RezKyoo AI" : "Restaurant"}
                 </div>
-              ))}
+                <p>{msg.content}</p>
+              </div>
             </div>
-          )}
+          ))}
         </div>
       )}
     </div>
@@ -718,36 +553,43 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
   // AI-generated summary (preferred) or flat ai_summary fallback
   const summaryText = notes?.summary || result.ai_summary
 
-  // Special request display — only show standalone block when there are NO call_notes
-  // (when call_notes exist, special requests are covered in the summary + CallNotesDisplay)
+  // Special request display — only show when there are NO call_notes
   const specialRequestInfo = !hasNotes && result.special_request_status ? (
     <div className={`mt-2 p-2 rounded text-xs flex items-start gap-2 ${
       result.special_request_status.honored 
-        ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
-        : "bg-amber-50 border border-amber-200 text-amber-700"
+        ? "bg-emerald-50/50 text-emerald-700"
+        : "bg-amber-50/50 text-amber-700"
     }`}>
-      <span className="text-base">{result.special_request_status.honored ? "✓" : "⚠"}</span>
-      <div>
-        <div className="font-medium">
-          {result.special_request_status.honored ? "Special request confirmed!" : "Special request note"}
-        </div>
-        {result.special_request_status.note && (
-          <div className="mt-0.5 opacity-80">{result.special_request_status.note}</div>
-        )}
-      </div>
-    </div>
-  ) : !hasNotes && reservation?.special_requests ? (
-    <div className="mt-2 p-2 rounded text-xs bg-blue-50 border border-blue-200 text-blue-700 flex items-start gap-2">
-      <span className="text-base">📝</span>
-      <div>
-        <div className="font-medium">Your special request</div>
-        <div className="mt-0.5 opacity-80">{reservation.special_requests}</div>
-      </div>
+      <span>{result.special_request_status.honored ? "✓" : "⚠"}</span>
+      <span>{result.special_request_status.note || (result.special_request_status.honored ? "Special request can be accommodated" : "Special request may not be available")}</span>
     </div>
   ) : null
 
-  // Book button
-  const bookButton = isBooked ? (
+  // Key quotes from the call (inline, not a separate box)
+  const keyQuotes = notes?.key_quotes && notes.key_quotes.length > 0 ? (
+    <div className="mt-3 space-y-1.5">
+      {notes.key_quotes.slice(0, 2).map((quote, i) => (
+        <p key={i} className="text-xs italic pl-3 border-l-2 border-current/20 opacity-70">
+          "{quote}"
+        </p>
+      ))}
+    </div>
+  ) : null
+
+  // Next steps callout
+  const nextSteps = notes?.next_steps ? (
+    <div className="mt-2 text-xs font-medium opacity-80">
+      📌 {notes.next_steps}
+    </div>
+  ) : null
+
+  // Contact info
+  const contactInfo = notes?.contact_info?.name ? (
+    <div className="mt-1 text-xs opacity-60">Spoke with: {notes.contact_info.name}</div>
+  ) : null
+
+  // Booked state
+  const bookedBadge = isBooked ? (
     <div className="mt-3 w-full py-2 px-4 bg-emerald-100 text-emerald-700 font-semibold rounded-lg text-center border-2 border-emerald-300">
       ✓ Booked!
     </div>
@@ -758,23 +600,22 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
       <div className="rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 p-4 text-sm">
         <div className="font-semibold text-emerald-700 flex items-center gap-1.5">
           <span>🎉</span> Table on hold!
-          {notes?.hold_status?.hold_duration && (
+          {(notes?.hold_status?.hold_duration) && (
             <span className="text-xs font-normal text-emerald-600/70">({notes.hold_status.hold_duration})</span>
           )}
         </div>
         {(notes?.confirmed_time || result.time_held) && (
-          <div className="text-emerald-600 mt-1 font-medium">
-            ⏰ {notes?.confirmed_time || result.time_held}
-          </div>
+          <div className="text-emerald-600 mt-1 font-medium">⏰ {notes?.confirmed_time || result.time_held}</div>
         )}
-        {summaryText && <div className="mt-2 text-emerald-700/80 text-sm">{summaryText}</div>}
+        {summaryText && <p className="mt-2 text-emerald-700/80">{summaryText}</p>}
         <OutcomeDetailChips result={result} callNotes={notes} />
         {specialRequestInfo}
-        {bookButton || (onBook && (
-          <button
-            onClick={onBook}
-            className="mt-3 w-full py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition-colors"
-          >
+        {keyQuotes}
+        {nextSteps}
+        {contactInfo}
+        <TranscriptToggle transcript={result.transcript} />
+        {bookedBadge || (onBook && (
+          <button onClick={onBook} className="mt-3 w-full py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition-colors">
             ✓ Book This Restaurant
           </button>
         ))}
@@ -789,14 +630,15 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
         {notes?.confirmed_time && (
           <div className="text-orange-600 mt-1 font-medium">⏰ {notes.confirmed_time}</div>
         )}
-        {summaryText && <div className="mt-2 text-orange-600/80 text-sm">{summaryText}</div>}
+        {summaryText && <p className="mt-2 text-orange-600/80">{summaryText}</p>}
         <OutcomeDetailChips result={result} callNotes={notes} />
         {specialRequestInfo}
-        {bookButton || (onBook && (
-          <button
-            onClick={onBook}
-            className="mt-3 w-full py-2 px-4 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors"
-          >
+        {keyQuotes}
+        {nextSteps}
+        {contactInfo}
+        <TranscriptToggle transcript={result.transcript} />
+        {bookedBadge || (onBook && (
+          <button onClick={onBook} className="mt-3 w-full py-2 px-4 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors">
             ✓ Book This Restaurant
           </button>
         ))}
@@ -811,28 +653,17 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
         <div className="font-semibold text-amber-700">⏰ Alternative time available</div>
         <div className="text-amber-800 font-medium text-base mt-1">Available at: {altTime}</div>
         {notes?.alternative_times && notes.alternative_times.length > 1 && (
-          <div className="text-xs text-amber-600 mt-0.5">
-            Also available: {notes.alternative_times.slice(1).join(", ")}
-          </div>
+          <div className="text-xs text-amber-600 mt-0.5">Also available: {notes.alternative_times.slice(1).join(", ")}</div>
         )}
-        {summaryText && <div className="mt-2 text-amber-600/80 text-sm">{summaryText}</div>}
+        {summaryText && <p className="mt-2 text-amber-600/80">{summaryText}</p>}
         <OutcomeDetailChips result={result} callNotes={notes} />
         {specialRequestInfo}
-        {reservation && (reservation.date || reservation.party_size) && (
-          <div className="mt-2 p-2 rounded bg-white/50 border border-amber-200/50 text-xs text-amber-700">
-            <div className="font-medium mb-1">Original Request:</div>
-            <div className="flex flex-wrap gap-x-3 gap-y-1">
-              {reservation.date && <span>📅 {reservation.date}</span>}
-              {reservation.time && <span>🕐 {formatTime12Hour(reservation.time)} (requested)</span>}
-              {reservation.party_size && <span>👥 {reservation.party_size} guest{reservation.party_size > 1 ? 's' : ''}</span>}
-            </div>
-          </div>
-        )}
-        {bookButton || (onBook && (
-          <button
-            onClick={onBook}
-            className="mt-3 w-full py-2 px-4 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg transition-colors"
-          >
+        {keyQuotes}
+        {nextSteps}
+        {contactInfo}
+        <TranscriptToggle transcript={result.transcript} />
+        {bookedBadge || (onBook && (
+          <button onClick={onBook} className="mt-3 w-full py-2 px-4 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg transition-colors">
             Book for {altTime}
           </button>
         ))}
@@ -844,7 +675,8 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
     return (
       <div className="rounded-lg bg-zinc-100 border border-zinc-200 p-3 text-sm text-zinc-500">
         <div className="font-medium">No availability at requested time</div>
-        {summaryText && <div className="mt-1 text-zinc-400">{summaryText}</div>}
+        {summaryText && <p className="mt-1 text-zinc-400">{summaryText}</p>}
+        <TranscriptToggle transcript={result.transcript} />
       </div>
     )
   }
@@ -852,7 +684,8 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
   if (summaryText) {
     return (
       <div className="rounded-lg bg-zinc-100 border border-zinc-200 p-4 text-sm text-zinc-600">
-        {summaryText}
+        <p>{summaryText}</p>
+        <TranscriptToggle transcript={result.transcript} />
       </div>
     )
   }
@@ -2094,14 +1927,6 @@ export default function BatchStatusPage() {
                                     special_requests: query.special_requests 
                                   } : undefined,
                                   confirmedBookingDetails?.placeId === (item.place_id || item.id)
-                                )}
-                                
-                                {/* Call Notes and Transcript - show for completed calls with notes */}
-                                {item.result.call_notes && (
-                                  <CallNotesDisplay 
-                                    callNotes={item.result.call_notes} 
-                                    transcript={item.result.transcript}
-                                  />
                                 )}
                               </div>
                             )}
