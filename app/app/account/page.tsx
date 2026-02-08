@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { ArrowLeft, User, Mail, Calendar, CreditCard, History, Phone, CalendarCheck } from "lucide-react"
+import { ArrowLeft, User, Mail, Calendar, CreditCard, History, Phone, CalendarCheck, MessageSquare } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,6 +15,7 @@ export default function AccountPage() {
     const { user, loading } = useAuth()
     const [fullName, setFullName] = React.useState("")
     const [phoneNumber, setPhoneNumber] = React.useState("")
+    const [smsNotifications, setSmsNotifications] = React.useState(true)
     const [saving, setSaving] = React.useState(false)
     const [message, setMessage] = React.useState<{ type: "success" | "error"; text: string } | null>(null)
 
@@ -32,6 +33,9 @@ export default function AccountPage() {
                     const profile = data.profile
                     if (profile?.phoneNumber) {
                         setPhoneNumber(profile.phoneNumber)
+                    }
+                    if (profile?.smsNotifications === false) {
+                        setSmsNotifications(false)
                     }
                     if (profile?.displayName) {
                         setFullName(profile.displayName)
@@ -76,6 +80,7 @@ export default function AccountPage() {
                 body: JSON.stringify({
                     displayName: fullName,
                     phoneNumber: phoneNumber || null,
+                    smsNotifications,
                 }),
             })
             if (!res.ok) {
@@ -202,6 +207,32 @@ export default function AccountPage() {
                                             className="border-zinc-200 focus:border-red-400 focus:ring-red-400"
                                         />
                                         <p className="text-xs text-zinc-500">Restaurants need this to hold your table</p>
+                                    </div>
+
+                                    {/* SMS Notifications Toggle */}
+                                    <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
+                                        <div className="flex items-center gap-3">
+                                            <MessageSquare className="h-4 w-4 text-zinc-400" />
+                                            <div>
+                                                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">SMS Notifications</p>
+                                                <p className="text-xs text-zinc-500">Get a text when your results are ready to book</p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            role="switch"
+                                            aria-checked={smsNotifications}
+                                            onClick={() => setSmsNotifications(!smsNotifications)}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                                smsNotifications ? "bg-emerald-500" : "bg-zinc-300 dark:bg-zinc-600"
+                                            }`}
+                                        >
+                                            <span
+                                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                                    smsNotifications ? "translate-x-6" : "translate-x-1"
+                                                }`}
+                                            />
+                                        </button>
                                     </div>
 
                                     {createdAt && (

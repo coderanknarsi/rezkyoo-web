@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { displayName, phoneNumber } = body
+    const { displayName, phoneNumber, smsNotifications } = body
 
     const docRef = adminDb.collection("users").doc(decoded.uid)
     const docSnap = await docRef.get()
@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
       await docRef.update({
         ...(displayName !== undefined && { displayName }),
         ...(phoneNumber !== undefined && { phoneNumber }),
+        ...(smsNotifications !== undefined && { smsNotifications }),
         updatedAt: new Date(),
       })
     } else {

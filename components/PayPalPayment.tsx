@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { Loader2 } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
 interface PayPalPaymentProps {
   batchId: string
@@ -28,6 +29,7 @@ export function PayPalPayment({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const buttonsRendered = useRef(false)
+  const { user } = useAuth()
 
   const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID
 
@@ -120,12 +122,21 @@ export function PayPalPayment({
         // Called when the payment is approved
         onApprove: async (data: { orderID: string }) => {
           try {
+            // Get Firebase auth token for SMS notification lookup
+            let authToken: string | undefined
+            try {
+              authToken = await user?.getIdToken()
+            } catch {
+              // Auth token is optional — SMS just won't send
+            }
+
             const response = await fetch("/api/paypal/capture-order", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 orderID: data.orderID,
                 batchId,
+                authToken,
               }),
             })
 

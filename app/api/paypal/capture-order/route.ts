@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createPaidToken } from "@/lib/paywall"
+import { adminApp, adminDb } from "@/lib/firebase-admin"
+import { getAuth } from "firebase-admin/auth"
+import { sendSms, buildPaymentSmsBody } from "@/lib/sms"
 
 const PAYPAL_API_BASE =
   process.env.PAYPAL_ENV === "live"
@@ -36,7 +39,7 @@ async function getAccessToken(): Promise<string> {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { orderID, batchId } = body
+    const { orderID, batchId, authToken } = body
 
     if (!orderID || !batchId) {
       return NextResponse.json(
@@ -120,6 +123,13 @@ export async function POST(request: NextRequest) {
 
     console.log("✅ Paid token issued for batch:", batchId)
 
+    // ── Post-payment SMS notification (fire-and-forget) ──
+    // Send SMS to user's phone if they have one saved and SMS is enabled.
+    // Guarded by smsSentAt on the batch doc to prevent duplicate texts.
+    trySendPostPaymentSms(batchId, authToken, request.nextUrl.origin).catch((err) => {
+      console.error("⚠️ SMS send error (non-blocking):", err)
+    })
+
     return response
   } catch (error) {
     console.error("❌ Error capturing PayPal order:", error)
@@ -127,5 +137,112 @@ export async function POST(request: NextRequest) {
       { error: "Internal server error" },
       { status: 500 }
     )
+  }
+}
+
+/**
+ * Attempt to send a post-payment SMS reminder.
+ * Non-blocking — called with .catch() so it never breaks the payment flow.
+ *
+ * Safeguards:
+ * 1. Dedup: Checks `smsSentAt` on batch doc — skips if already sent.
+ * 2. Opt-out: Checks `smsNotifications !== false` on user profile.
+ * 3. Phone validation: Skips if no valid phone number on profile.
+ * 4. Rate limit: Sets `smsSentAt` atomically before sending to prevent races.
+ */
+async function trySendPostPaymentSms(
+  batchId: string,
+  authToken: string | undefined,
+  origin: string
+): Promise<void> {
+  if (!adminDb || !adminApp) {
+    console.log("⚠️ SMS: Admin DB not initialized, skipping")
+    return
+  }
+
+  // 1. Check batch doc for dedup — if smsSentAt already set, skip
+  const batchRef = adminDb.collection("batches").doc(batchId)
+  const batchSnap = await batchRef.get()
+  if (!batchSnap.exists) {
+    console.log("⚠️ SMS: Batch not found:", batchId)
+    return
+  }
+
+  const batchData = batchSnap.data()
+  if (batchData?.smsSentAt) {
+    console.log("📱 SMS: Already sent for batch", batchId, "— skipping duplicate")
+    return
+  }
+
+  // 2. Identify the user — try auth token first, fall back to batch userId
+  let userId: string | null = null
+
+  if (authToken) {
+    try {
+      const decoded = await getAuth(adminApp).verifyIdToken(authToken)
+      userId = decoded.uid
+    } catch {
+      console.log("⚠️ SMS: Could not verify auth token, trying batch userId")
+    }
+  }
+
+  if (!userId && batchData?.userId) {
+    userId = batchData.userId
+  }
+
+  if (!userId) {
+    console.log("⚠️ SMS: No user ID available for batch", batchId)
+    return
+  }
+
+  // 3. Look up user profile for phone + SMS preference
+  const userSnap = await adminDb.collection("users").doc(userId).get()
+  if (!userSnap.exists) {
+    console.log("⚠️ SMS: No user profile for", userId)
+    return
+  }
+
+  const profile = userSnap.data()
+  if (profile?.smsNotifications === false) {
+    console.log("📱 SMS: User opted out of texts:", userId)
+    return
+  }
+
+  const phone = profile?.phoneNumber
+  if (!phone) {
+    console.log("⚠️ SMS: No phone number for user", userId)
+    return
+  }
+
+  // 4. Atomically set smsSentAt to prevent race conditions (double-send guard)
+  try {
+    await batchRef.update({ smsSentAt: new Date() })
+  } catch {
+    console.log("⚠️ SMS: Could not set smsSentAt — possible race, skipping")
+    return
+  }
+
+  // 5. Count available restaurants for the message
+  const items = batchData?.items || []
+  const availableCount = items.filter(
+    (i: any) => i.result?.outcome === "available" || i.result?.outcome === "hold_confirmed"
+  ).length
+
+  if (availableCount === 0) {
+    console.log("📱 SMS: No available restaurants — skipping SMS for batch", batchId)
+    return
+  }
+
+  // 6. Build URL and send
+  const batchUrl = `${origin}/app/batch/${batchId}`
+  const body = buildPaymentSmsBody(batchUrl, availableCount)
+
+  const result = await sendSms({ to: phone, body })
+  if (result.ok) {
+    console.log("📱 SMS sent to", phone, "for batch", batchId, "msgId:", result.messageId)
+  } else {
+    console.error("❌ SMS failed for batch", batchId, ":", result.error)
+    // Clear smsSentAt so retry is possible on next page load (if applicable)
+    await batchRef.update({ smsSentAt: null }).catch(() => {})
   }
 }
