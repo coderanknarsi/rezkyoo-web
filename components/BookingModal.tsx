@@ -4,7 +4,7 @@ import * as React from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Loader2, Phone, User, Calendar, Users, Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react"
+import { Loader2, Phone, User, Calendar, Users, Clock, CheckCircle, XCircle, AlertCircle, FileText } from "lucide-react"
 import { formatPhoneNumber, isValidPhoneNumber } from "@/lib/user-profile"
 
 export interface BookingDetails {
@@ -25,6 +25,7 @@ export interface BookingDetails {
     note?: string
   }
   requiresDeposit?: boolean  // Credit card required for booking
+  aiSummary?: string  // AI-generated call summary
   // Large group (7+) specific fields
   privateRoom?: "available" | "required" | "not_available"
   minimumSpend?: string  // e.g., "$500", "$50 per person"
@@ -260,68 +261,36 @@ export function BookingModal({
                 ⏰ Booking for alternative time offered by restaurant
               </div>
             )}
-            {/* Special Request Status */}
-            {booking.specialRequestStatus && (
-              <div className={`mt-2 p-2 rounded text-xs flex items-start gap-2 ${
-                booking.specialRequestStatus.honored 
-                  ? "bg-emerald-50 text-emerald-700" 
-                  : "bg-amber-50 text-amber-700"
-              }`}>
-                <span className="text-base">{booking.specialRequestStatus.honored ? "✓" : "⚠"}</span>
-                <div>
-                  <div className="font-medium">
-                    {booking.specialRequestStatus.honored ? "Special request confirmed!" : "Special request note"}
-                  </div>
-                  {booking.specialRequestStatus.note && (
-                    <div className="mt-0.5 opacity-80">{booking.specialRequestStatus.note}</div>
-                  )}
+            {/* AI Call Summary */}
+            {booking.aiSummary && (
+              <div className="mt-2 p-3 rounded-lg bg-emerald-50/60 border border-emerald-200 text-emerald-800">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600/70 uppercase tracking-wide mb-1">
+                  <FileText className="h-3 w-3" /> AI Call Summary
                 </div>
+                <p className="text-xs leading-relaxed">{booking.aiSummary}</p>
               </div>
             )}
-            {/* Show special requests text if present but no status yet */}
-            {booking.specialRequests && !booking.specialRequestStatus && (
-              <div className="mt-2 p-2 rounded text-xs bg-zinc-100 text-zinc-600">
-                <span className="font-medium">Special request:</span> {booking.specialRequests}
-              </div>
-            )}
-            {/* Credit Card Required Notice */}
-            {booking.requiresDeposit && (
-              <div className="mt-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800">
-                <div className="flex items-start gap-2">
-                  <span className="text-lg">💳</span>
-                  <div>
-                    <div className="font-medium text-sm">Credit card required</div>
-                    <div className="text-xs mt-0.5 opacity-80">
-                      This restaurant requires a credit card to hold your reservation.
-                      They will call you directly at your phone number to collect card details.
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            {/* Large Party Info (7+ guests) */}
-            {(booking.privateRoom || booking.minimumSpend || booking.prixFixeRequired || booking.perks) && (
-              <div className="mt-2 p-3 rounded-lg bg-violet-50 border border-violet-200 text-violet-800">
-                <div className="font-medium text-sm mb-1 flex items-center gap-1">
-                  <span>👥</span> Large Party Details
-                </div>
-                <div className="text-xs space-y-1 opacity-90">
-                  {booking.privateRoom === "available" && (
-                    <div>🚪 Private room available</div>
-                  )}
-                  {booking.privateRoom === "required" && (
-                    <div>🚪 Private room required</div>
-                  )}
-                  {booking.minimumSpend && (
-                    <div>💰 Minimum spend: {booking.minimumSpend}</div>
-                  )}
-                  {booking.prixFixeRequired && (
-                    <div>🍽️ Prix fixe menu required</div>
-                  )}
-                  {booking.perks && (
-                    <div>🎁 Perks: {booking.perks}</div>
-                  )}
-                </div>
+            {/* Condition chips */}
+            {(booking.requiresDeposit || booking.privateRoom || booking.minimumSpend || booking.prixFixeRequired || booking.perks) && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {booking.requiresDeposit && (
+                  <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium bg-amber-100 text-amber-700">💳 Deposit required</span>
+                )}
+                {booking.privateRoom === "available" && (
+                  <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium bg-violet-100 text-violet-700">🚪 Private room</span>
+                )}
+                {booking.privateRoom === "required" && (
+                  <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium bg-violet-100 text-violet-700">🚪 Private room required</span>
+                )}
+                {booking.minimumSpend && (
+                  <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium bg-blue-100 text-blue-700">💰 {booking.minimumSpend}</span>
+                )}
+                {booking.prixFixeRequired && (
+                  <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium bg-orange-100 text-orange-700">🍽️ Set menu required</span>
+                )}
+                {booking.perks && (
+                  <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium bg-green-100 text-green-700">🎁 {booking.perks}</span>
+                )}
               </div>
             )}
           </div>
@@ -364,7 +333,7 @@ export function BookingModal({
                 </div>
               )}
 
-              <Button onClick={handleSubmit} className="w-full bg-red-600 hover:bg-red-700">
+              <Button onClick={handleSubmit} className="w-full bg-emerald-600 hover:bg-emerald-700">
                 Confirm Booking
               </Button>
             </div>

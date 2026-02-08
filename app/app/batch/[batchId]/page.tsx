@@ -607,7 +607,14 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
         {(notes?.confirmed_time || result.time_held) && (
           <div className="text-emerald-600 mt-1 font-medium">⏰ {notes?.confirmed_time || result.time_held}</div>
         )}
-        {summaryText && <p className="mt-2 text-emerald-700/80">{summaryText}</p>}
+        {summaryText && (
+          <div className="mt-3">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600/70 uppercase tracking-wide mb-1">
+              <FileText className="h-3 w-3" /> AI Call Summary
+            </div>
+            <p className="text-emerald-700/80">{summaryText}</p>
+          </div>
+        )}
         <OutcomeDetailChips result={result} callNotes={notes} />
         {specialRequestInfo}
         {keyQuotes}
@@ -630,7 +637,14 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
         {notes?.confirmed_time && (
           <div className="text-emerald-600 mt-1 font-medium">⏰ {notes.confirmed_time}</div>
         )}
-        {summaryText && <p className="mt-2 text-emerald-700/80">{summaryText}</p>}
+        {summaryText && (
+          <div className="mt-3">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600/70 uppercase tracking-wide mb-1">
+              <FileText className="h-3 w-3" /> AI Call Summary
+            </div>
+            <p className="text-emerald-700/80">{summaryText}</p>
+          </div>
+        )}
         <OutcomeDetailChips result={result} callNotes={notes} />
         {specialRequestInfo}
         {keyQuotes}
@@ -655,7 +669,14 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
         {notes?.alternative_times && notes.alternative_times.length > 1 && (
           <div className="text-xs text-amber-600 mt-0.5">Also available: {notes.alternative_times.slice(1).join(", ")}</div>
         )}
-        {summaryText && <p className="mt-2 text-amber-600/80">{summaryText}</p>}
+        {summaryText && (
+          <div className="mt-3">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-600/70 uppercase tracking-wide mb-1">
+              <FileText className="h-3 w-3" /> AI Call Summary
+            </div>
+            <p className="text-amber-600/80">{summaryText}</p>
+          </div>
+        )}
         <OutcomeDetailChips result={result} callNotes={notes} />
         {specialRequestInfo}
         {keyQuotes}
@@ -675,7 +696,14 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
     return (
       <div className="rounded-lg bg-zinc-100 border border-zinc-200 p-3 text-sm text-zinc-500">
         <div className="font-medium">No availability at requested time</div>
-        {summaryText && <p className="mt-1 text-zinc-400">{summaryText}</p>}
+        {summaryText && (
+          <div className="mt-2">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-400/80 uppercase tracking-wide mb-1">
+              <FileText className="h-3 w-3" /> AI Call Summary
+            </div>
+            <p className="text-zinc-400">{summaryText}</p>
+          </div>
+        )}
         <TranscriptToggle transcript={result.transcript} />
       </div>
     )
@@ -684,6 +712,9 @@ function getOutcomeMessage(result?: CallResult, onBook?: () => void, reservation
   if (summaryText) {
     return (
       <div className="rounded-lg bg-zinc-100 border border-zinc-200 p-4 text-sm text-zinc-600">
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500/70 uppercase tracking-wide mb-1">
+          <FileText className="h-3 w-3" /> AI Call Summary
+        </div>
         <p>{summaryText}</p>
         <TranscriptToggle transcript={result.transcript} />
       </div>
@@ -1761,6 +1792,7 @@ export default function BatchStatusPage() {
                       specialRequests: query?.special_requests,
                       specialRequestStatus: item.result?.special_request_status,
                       requiresDeposit: item.result?.requires_deposit,
+                      aiSummary: item.result?.call_notes?.summary || item.result?.ai_summary,
                       // Large group fields
                       privateRoom: item.result?.private_room,
                       minimumSpend: item.result?.minimum_spend,

@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input"
 import { AppHeader } from "@/components/AppHeader"
 import { useAuth } from "@/lib/auth-context"
 import { updateProfile } from "firebase/auth"
-import { getUserProfile, saveUserProfile } from "@/lib/user-profile"
+import { getUserProfile } from "@/lib/user-profile"
+import { auth } from "@/lib/firebase"
 
 export default function AccountPage() {
     const { user, loading } = useAuth()
@@ -55,11 +56,23 @@ export default function AccountPage() {
             // Update Firebase Auth display name
             await updateProfile(user, { displayName: fullName })
 
-            // Update Firestore profile
-            await saveUserProfile(user.uid, {
-                displayName: fullName,
-                phoneNumber: phoneNumber || null,
+            // Update Firestore profile via server-side API (Admin SDK)
+            const idToken = await user.getIdToken()
+            const res = await fetch("/api/profile", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${idToken}`,
+                },
+                body: JSON.stringify({
+                    displayName: fullName,
+                    phoneNumber: phoneNumber || null,
+                }),
             })
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}))
+                throw new Error(data.error || "Failed to save profile")
+            }
 
             setMessage({ type: "success", text: "Profile updated successfully!" })
         } catch (error) {
