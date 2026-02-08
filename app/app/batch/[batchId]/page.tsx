@@ -13,7 +13,6 @@ import { CallMapVisualization } from "./components/CallMapVisualization"
 import { DynamicCallMap } from "./components/DynamicCallMap"
 import { PayPalPayment } from "@/components/PayPalPayment"
 import { BookingModal, BookingDetails, UserInfo } from "@/components/BookingModal"
-import { getUserProfile } from "@/lib/user-profile"
 
 const POLL_INTERVAL_MS = 5000 // 5 seconds during active calls
 
@@ -827,7 +826,7 @@ export default function BatchStatusPage() {
     Promise.all(releasePromises).catch(console.error)
   }, [batchId, items])
 
-  // Fetch user profile for booking modal
+  // Fetch user profile for booking modal (via server API for reliability)
   React.useEffect(() => {
     let cancelled = false
 
@@ -835,13 +834,26 @@ export default function BatchStatusPage() {
       if (!user?.uid) return
 
       try {
-        const profile = await getUserProfile(user.uid)
+        const idToken = await user.getIdToken()
+        const res = await fetch("/api/profile", {
+          headers: { Authorization: `Bearer ${idToken}` },
+        })
         if (cancelled) return
 
-        setUserInfo({
-          name: profile?.displayName || user.displayName || undefined,
-          phone: profile?.phoneNumber || user.phoneNumber || undefined,
-        })
+        if (res.ok) {
+          const data = await res.json()
+          const profile = data.profile
+          setUserInfo({
+            name: profile?.displayName || user.displayName || undefined,
+            phone: profile?.phoneNumber || user.phoneNumber || undefined,
+          })
+        } else {
+          // Fallback to Firebase Auth data
+          setUserInfo({
+            name: user.displayName || undefined,
+            phone: user.phoneNumber || undefined,
+          })
+        }
       } catch (error) {
         if (cancelled) return
         setUserInfo({

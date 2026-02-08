@@ -10,8 +10,6 @@ import { Input } from "@/components/ui/input"
 import { AppHeader } from "@/components/AppHeader"
 import { useAuth } from "@/lib/auth-context"
 import { updateProfile } from "firebase/auth"
-import { getUserProfile } from "@/lib/user-profile"
-import { auth } from "@/lib/firebase"
 
 export default function AccountPage() {
     const { user, loading } = useAuth()
@@ -20,23 +18,34 @@ export default function AccountPage() {
     const [saving, setSaving] = React.useState(false)
     const [message, setMessage] = React.useState<{ type: "success" | "error"; text: string } | null>(null)
 
-    // Fetch user profile from Firestore
+    // Fetch user profile from Firestore via server API
     React.useEffect(() => {
         async function fetchProfile() {
             if (!user) return
             try {
-                const profile = await getUserProfile(user.uid)
-                if (profile?.phoneNumber) {
-                    setPhoneNumber(profile.phoneNumber)
-                }
-                if (profile?.displayName) {
-                    setFullName(profile.displayName)
-                } else if (user.displayName) {
-                    setFullName(user.displayName)
+                const idToken = await user.getIdToken()
+                const res = await fetch("/api/profile", {
+                    headers: { Authorization: `Bearer ${idToken}` },
+                })
+                if (res.ok) {
+                    const data = await res.json()
+                    const profile = data.profile
+                    if (profile?.phoneNumber) {
+                        setPhoneNumber(profile.phoneNumber)
+                    }
+                    if (profile?.displayName) {
+                        setFullName(profile.displayName)
+                    } else if (user.displayName) {
+                        setFullName(user.displayName)
+                    }
+                } else {
+                    // Fallback to Firebase Auth display name
+                    if (user.displayName) {
+                        setFullName(user.displayName)
+                    }
                 }
             } catch (err) {
                 console.error("Error fetching profile:", err)
-                // Fallback to Firebase Auth display name
                 if (user.displayName) {
                     setFullName(user.displayName)
                 }

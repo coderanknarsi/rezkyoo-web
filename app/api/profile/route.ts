@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server"
-import { adminDb } from "@/lib/firebase-admin"
+import { adminApp, adminDb } from "@/lib/firebase-admin"
 import { getAuth } from "firebase-admin/auth"
 
 /**
@@ -14,7 +14,10 @@ async function verifyToken(req: NextRequest) {
     throw new Error("Unauthorized")
   }
   const idToken = authHeader.split("Bearer ")[1]
-  const decoded = await getAuth().verifyIdToken(idToken)
+  if (!adminApp) {
+    throw new Error("Firebase Admin not initialized")
+  }
+  const decoded = await getAuth(adminApp).verifyIdToken(idToken)
   return decoded
 }
 

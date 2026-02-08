@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/lib/auth-context"
-import { saveUserProfile, isValidPhoneNumber } from "@/lib/user-profile"
+import { isValidPhoneNumber } from "@/lib/user-profile"
 
 export default function SignupPage() {
     const router = useRouter()
@@ -58,14 +58,25 @@ export default function SignupPage() {
         try {
             const userCredential = await signUp(email, password)
 
-            // Save user profile with phone number to Firestore
+            // Save user profile with phone number via server API
             if (userCredential?.user) {
-                await saveUserProfile(userCredential.user.uid, {
-                    email: email,
-                    displayName: null,
-                    phoneNumber: phoneNumber || null,
-                    smsNotifications: true,
-                })
+                try {
+                    const idToken = await userCredential.user.getIdToken()
+                    await fetch("/api/profile", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${idToken}`,
+                        },
+                        body: JSON.stringify({
+                            email: email,
+                            displayName: null,
+                            phoneNumber: phoneNumber || null,
+                        }),
+                    })
+                } catch (err) {
+                    console.error("Error saving profile:", err)
+                }
             }
 
             router.push(returnUrl || "/app/search")

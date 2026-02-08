@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator"
 import { AppHeader } from "@/components/AppHeader"
 import { useAuth } from "@/lib/auth-context"
 import { saveSearchToHistory } from "@/lib/search-history"
-import { getUserProfile, saveUserProfile, isValidPhoneNumber } from "@/lib/user-profile"
+import { isValidPhoneNumber } from "@/lib/user-profile"
 
 // Generate time options in 15-minute intervals
 function generateTimeOptions() {
@@ -265,7 +265,7 @@ export default function SearchPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Run once on mount
 
-  // Fetch user profile to check if phone is saved
+  // Fetch user profile to check if phone is saved (via server API)
   React.useEffect(() => {
     async function fetchProfile() {
       if (!user) {
@@ -273,10 +273,16 @@ export default function SearchPage() {
         return
       }
       try {
-        const profile = await getUserProfile(user.uid)
-        if (profile?.phoneNumber) {
-          setPhoneNumber(profile.phoneNumber)
-          setHasPhoneSaved(true)
+        const idToken = await user.getIdToken()
+        const res = await fetch("/api/profile", {
+          headers: { Authorization: `Bearer ${idToken}` },
+        })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.profile?.phoneNumber) {
+            setPhoneNumber(data.profile.phoneNumber)
+            setHasPhoneSaved(true)
+          }
         }
       } catch (err) {
         console.error("Error fetching profile:", err)
@@ -295,11 +301,21 @@ export default function SearchPage() {
 
     // No longer require auth here - auth is required on results page when starting calls
 
-    // If user is logged in and phone was entered, save it to profile
+    // If user is logged in and phone was entered, save it to profile via server API
     if (user && phoneNumber && !hasPhoneSaved && isValidPhoneNumber(phoneNumber)) {
       try {
-        await saveUserProfile(user.uid, { phoneNumber })
-        setHasPhoneSaved(true)
+        const idToken = await user.getIdToken()
+        const res = await fetch("/api/profile", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({ phoneNumber }),
+        })
+        if (res.ok) {
+          setHasPhoneSaved(true)
+        }
       } catch (err) {
         console.error("Error saving phone:", err)
       }
