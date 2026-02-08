@@ -35,6 +35,16 @@ function generateTimeOptions() {
 
 const ALL_TIME_OPTIONS = generateTimeOptions()
 
+// ===============================
+// Calling Window Constants
+// ===============================
+// Restaurants typically staff hosts from ~10 AM to ~9 PM.
+// Calling outside this window wastes money (voicemail, annoyed staff).
+const CALLING_WINDOW_START = "10:00" // Earliest we'll call restaurants
+const CALLING_WINDOW_END   = "21:00" // Latest we'll call (9 PM)
+const LAST_DINING_SLOT     = "22:00" // Latest reservable time we show
+const MAX_FUTURE_DAYS      = 30      // How far out users can book
+
 // Get today's date in YYYY-MM-DD format (using LOCAL timezone)
 function getTodayDate() {
   const now = new Date()
@@ -48,6 +58,21 @@ function getTodayDate() {
 function getCurrentTime() {
   const now = new Date()
   return `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`
+}
+
+// Get the max bookable date (today + MAX_FUTURE_DAYS)
+function getMaxDate() {
+  const d = new Date()
+  d.setDate(d.getDate() + MAX_FUTURE_DAYS)
+  const year = d.getFullYear()
+  const month = (d.getMonth() + 1).toString().padStart(2, "0")
+  const day = d.getDate().toString().padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+// Check if it's past the calling window for today
+function isPastCallingWindow() {
+  return getCurrentTime() >= CALLING_WINDOW_END
 }
 
 // Filter out past times if date is today
@@ -81,7 +106,7 @@ export default function SearchPage() {
   const [location, setLocation] = React.useState("")
   const [userCoords, setUserCoords] = React.useState<{ lat: number; lng: number } | null>(null)
   const [partySize, setPartySize] = React.useState("")
-  const [date, setDate] = React.useState(getTodayDate()) // Default to today
+  const [date, setDate] = React.useState("") // Set in useEffect to avoid hydration mismatch
   const [time, setTime] = React.useState("")
   const [specialRequests, setSpecialRequests] = React.useState("")
   const [loading, setLoading] = React.useState(false)
@@ -89,6 +114,7 @@ export default function SearchPage() {
   const [debugResponse, setDebugResponse] = React.useState<any>(null)
   const [gettingLocation, setGettingLocation] = React.useState(false)
   const [locationError, setLocationError] = React.useState<string | null>(null)
+  const [mounted, setMounted] = React.useState(false)
 
   // Phone number collection
   const [phoneNumber, setPhoneNumber] = React.useState("")
@@ -98,6 +124,12 @@ export default function SearchPage() {
   const dateInputRef = React.useRef<HTMLInputElement>(null)
   const [shouldAutoSubmit, setShouldAutoSubmit] = React.useState(false)
   const formRef = React.useRef<HTMLFormElement>(null)
+
+  // Set default date after mount to avoid hydration mismatch (new Date() differs server vs client)
+  React.useEffect(() => {
+    setDate(getTodayDate())
+    setMounted(true)
+  }, [])
 
   // Restore form state from URL params (after returning from signup)
   React.useEffect(() => {
@@ -275,10 +307,35 @@ export default function SearchPage() {
 
     // Validate date/time combination
     const today = getTodayDate()
-    if (date === today && time) {
+
+    // Block past dates entirely
+    if (date && date < today) {
+      setError("Please select today or a future date.")
+      setLoading(false)
+      return
+    }
+
+    // Same-day validations
+    if (date === today) {
       const currentTime = getCurrentTime()
+
+      // If it's past calling window, block same-day searches entirely
+      if (isPastCallingWindow()) {
+        setError("It's too late to call restaurants today. Please search for tomorrow or later.")
+        setLoading(false)
+        return
+      }
+
+      // Require a time for same-day searches
+      if (!time) {
+        setError("Please select a time for today's reservation.")
+        setLoading(false)
+        return
+      }
+
+      // Don't allow past times
       if (time < currentTime) {
-        setError("Please select a future time for today's reservation")
+        setError("Please select a future time for today's reservation.")
         setLoading(false)
         return
       }
@@ -301,6 +358,13 @@ export default function SearchPage() {
 
     if (date) {
       payload.date = date
+    }
+
+    // Send user's timezone so the server can validate calling hours
+    try {
+      payload.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    } catch {
+      // Fallback - server will use UTC
     }
 
     if (time) {
@@ -462,7 +526,8 @@ export default function SearchPage() {
                         id="date"
                         type="date"
                         value={date}
-                        min={getTodayDate()}
+                        min={mounted ? getTodayDate() : undefined}
+                        max={mounted ? getMaxDate() : undefined}
                         onChange={(event) => setDate(event.target.value)}
                         className="flex h-12 w-full rounded-md border border-zinc-200 bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
                       />
@@ -504,22 +569,50 @@ export default function SearchPage() {
                     const availableDiningTimes = allDiningTimes
                       .filter(t => availableTimeOptions.find(o => o.value === t))
                       .slice(0, 12)
+
+                    const isToday = mounted && date === getTodayDate()
+                    const tooLateToday = isToday && isPastCallingWindow()
                     
-                    // If no times available today (it's late), suggest changing the date
-                    if (availableDiningTimes.length === 0) {
+                    // Past the calling window — block same-day search
+                    if (tooLateToday) {
                       return (
-                        <div className="p-4 text-center text-sm text-zinc-500 bg-zinc-50 rounded-lg border border-zinc-200">
-                          <p className="mb-2">It's getting late! No dining times left for today.</p>
+                        <div className="p-4 text-center text-sm bg-amber-50 rounded-lg border border-amber-200">
+                          <div className="text-amber-800 font-medium mb-1">🌙 Restaurants are closing for the night</div>
+                          <p className="text-amber-700 mb-3 text-xs">It's past 9 PM — too late to call restaurants today.</p>
                           <button
                             type="button"
                             onClick={() => {
-                              // Set date to tomorrow
                               const tomorrow = new Date()
                               tomorrow.setDate(tomorrow.getDate() + 1)
                               const y = tomorrow.getFullYear()
                               const m = (tomorrow.getMonth() + 1).toString().padStart(2, '0')
                               const d = tomorrow.getDate().toString().padStart(2, '0')
                               setDate(`${y}-${m}-${d}`)
+                              setTime('') // Reset time so they pick a slot for tomorrow
+                            }}
+                            className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-red-500 text-white font-medium text-sm hover:bg-red-600 transition-colors shadow-sm"
+                          >
+                            Search for tomorrow instead →
+                          </button>
+                        </div>
+                      )
+                    }
+
+                    // No dining slots left but still within calling window (unlikely edge)
+                    if (availableDiningTimes.length === 0 && isToday) {
+                      return (
+                        <div className="p-4 text-center text-sm text-zinc-500 bg-zinc-50 rounded-lg border border-zinc-200">
+                          <p className="mb-2">No more dining times available today.</p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const tomorrow = new Date()
+                              tomorrow.setDate(tomorrow.getDate() + 1)
+                              const y = tomorrow.getFullYear()
+                              const m = (tomorrow.getMonth() + 1).toString().padStart(2, '0')
+                              const d = tomorrow.getDate().toString().padStart(2, '0')
+                              setDate(`${y}-${m}-${d}`)
+                              setTime('')
                             }}
                             className="text-red-600 hover:text-red-700 font-medium underline"
                           >
@@ -530,25 +623,32 @@ export default function SearchPage() {
                     }
                     
                     return (
-                      <div className="grid grid-cols-4 gap-2">
-                        {availableDiningTimes.map(t => {
-                          const opt = availableTimeOptions.find(o => o.value === t)!
-                          const isSelected = time === t
-                          return (
-                            <button
-                              key={t}
-                              type="button"
-                              onClick={() => setTime(t)}
-                              className={`py-2.5 px-2 text-sm font-medium rounded-lg border transition-all ${isSelected
-                                ? 'bg-red-500 text-white border-red-500 shadow-md'
-                                : 'bg-red-50 text-red-700 border-red-100 hover:border-red-300 hover:bg-red-100'
-                                }`}
-                            >
-                              {opt.label}
-                            </button>
-                          )
-                        })}
-                      </div>
+                      <>
+                        <div className="grid grid-cols-4 gap-2">
+                          {availableDiningTimes.map(t => {
+                            const opt = availableTimeOptions.find(o => o.value === t)!
+                            const isSelected = time === t
+                            return (
+                              <button
+                                key={t}
+                                type="button"
+                                onClick={() => setTime(t)}
+                                className={`py-2.5 px-2 text-sm font-medium rounded-lg border transition-all ${isSelected
+                                  ? 'bg-red-500 text-white border-red-500 shadow-md'
+                                  : 'bg-red-50 text-red-700 border-red-100 hover:border-red-300 hover:bg-red-100'
+                                  }`}
+                              >
+                                {opt.label}
+                              </button>
+                            )
+                          })}
+                        </div>
+                        {isToday && !time && (
+                          <p className="text-xs text-amber-600 font-medium">
+                            ⏰ Please select a time for today's search
+                          </p>
+                        )}
+                      </>
                     )
                   })()}
 
@@ -572,7 +672,7 @@ export default function SearchPage() {
                     </select>
                   </details>
 
-                  {date === getTodayDate() && availableTimeOptions.length < ALL_TIME_OPTIONS.length && (
+                  {mounted && date === getTodayDate() && availableTimeOptions.length < ALL_TIME_OPTIONS.length && (
                     <p className="text-xs text-muted-foreground">
                       Only showing times at least 30 min from now
                     </p>
@@ -646,14 +746,18 @@ export default function SearchPage() {
                 {/* Submit Button */}
                 <Button
                   type="submit"
-                  disabled={loading}
-                  className="h-14 text-lg font-semibold bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg shadow-red-500/25"
+                  disabled={loading || (mounted && date === getTodayDate() && isPastCallingWindow()) || (mounted && date === getTodayDate() && !time)}
+                  className="h-14 text-lg font-semibold bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg shadow-red-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? (
                     <span className="flex items-center gap-2">
                       <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
                       Searching...
                     </span>
+                  ) : mounted && date === getTodayDate() && isPastCallingWindow() ? (
+                    "Too late for today"
+                  ) : mounted && date === getTodayDate() && !time ? (
+                    "Select a time to search"
                   ) : (
                     "Find Tables"
                   )}

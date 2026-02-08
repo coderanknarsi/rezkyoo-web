@@ -9,6 +9,7 @@ export type FindRestaurantsInput = {
   intent?: string
   max_restaurants?: number
   client_id?: string
+  timezone?: string  // IANA timezone (e.g. "America/Chicago") for calling-window validation
 }
 
 export type StartCallsInput = {
